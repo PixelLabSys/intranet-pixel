@@ -51,7 +51,8 @@
   .tag { font-size:10px; padding:2px 7px; border:1px solid var(--border); border-radius:999px; color:var(--subtle); }
   .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; } .actions { display:flex; gap:8px; margin-top:16px; flex-wrap:wrap; }
   .preview { width:100%; max-width:360px; aspect-ratio:16/7; background:var(--surface) center/cover; border:1px solid var(--border); border-radius:8px; display:grid; place-items:center; color:var(--subtle); font-size:12px; }
-  .w-l { font-weight:300; } .w-b { font-weight:700; }
+  .sw { width:22px; height:22px; border-radius:50%; border:1px solid var(--border); cursor:pointer; padding:0; }
+  .sw.auto { background:linear-gradient(135deg,transparent 45%,var(--subtle) 45%,var(--subtle) 55%,transparent 55%); }
   .tb { display:flex; gap:6px; margin:12px 0 4px; align-items:center; } .tb button { padding:4px 10px; font-size:12px; } .tb .hint { font-size:11px; color:var(--subtle); }
   .rp { margin-top:6px; padding:10px 12px; border:1px dashed var(--border); border-radius:8px; color:var(--fg); }
   .soon { color:var(--subtle); padding:40px 0; text-align:center; }
@@ -65,5 +66,6 @@
 <script src="../assets/common.js"></script>
 <script src="../assets/supabase-js-2.117.3.min.js"></script>
 <script src="admin.js"></script>
+<script>var st = document.createElement('style'); st.textContent = PX.richCss(); document.head.appendChild(st);</script>
 </body>
 </html>

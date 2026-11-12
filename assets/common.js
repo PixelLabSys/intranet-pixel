@@ -83,18 +83,34 @@
     return el;
   }
 
-  /* Texto con pesos: [l]ligero[/l] y [b]negrita[/b]. Se interpreta a mano (sin innerHTML): solo crea <span> con clase. */
+  /* Texto con formato: [l]ligero[/l], [b]negrita[/b], [c:terracota]color[/c]. Se interpreta a mano (sin innerHTML):
+     solo crea <span> con clases de una lista fija; ningún valor del texto llega a estilos ni atributos. */
+  var COLORS = { blanco: '#ffffff', terracota: '#D18259', dorado: '#E2B584', marron: '#9B6B4F', navy: '#223050' };
+  var COLOR_LABELS = { blanco: 'Blanco', terracota: 'Terracota', dorado: 'Dorado', marron: 'Marrón', navy: 'Azul navy' };
   function rich(text) {
-    var frag = document.createDocumentFragment(), parts = String(text || '').split(/(\[\/?[lb]\])/), cls = null, buf = '';
-    function flush() { if (!buf) return; frag.appendChild(cls ? h('span', { class: 'w-' + cls }, buf) : document.createTextNode(buf)); buf = ''; }
+    var frag = document.createDocumentFragment(), parts = String(text || '').split(/(\[\/?[lb]\]|\[c:[a-z]+\]|\[\/c\])/), w = null, c = null, buf = '';
+    function flush() {
+      if (!buf) return;
+      if (w || c) frag.appendChild(h('span', { class: (w ? 'w-' + w : '') + (w && c ? ' ' : '') + (c ? 'c-' + c : '') }, buf));
+      else frag.appendChild(document.createTextNode(buf));
+      buf = '';
+    }
     parts.forEach(function (t) {
-      var m = /^\[(\/?)([lb])\]$/.exec(t);
-      if (!m) { buf += t; return; }
-      flush(); cls = m[1] ? null : m[2];
+      var m;
+      if ((m = /^\[(\/?)([lb])\]$/.exec(t))) { flush(); w = m[1] ? null : m[2]; }
+      else if ((m = /^\[c:([a-z]+)\]$/.exec(t))) { flush(); c = COLORS[m[1]] ? m[1] : null; }
+      else if (t === '[/c]') { flush(); c = null; }
+      else buf += t;
     });
     flush(); return frag;
   }
-  function stripRich(text) { return String(text || '').replace(/\[\/?[lb]\]/g, ''); }
+  function stripRich(text, which) {
+    var re = which === 'w' ? /\[\/?[lb]\]/g : which === 'c' ? /\[c:[a-z]+\]|\[\/c\]/g : /\[\/?[lb]\]|\[c:[a-z]+\]|\[\/c\]/g;
+    return String(text || '').replace(re, '');
+  }
+  function richCss() {
+    return '.w-l{font-weight:300}.w-b{font-weight:700}' + Object.keys(COLORS).map(function (k) { return '.c-' + k + '{color:' + COLORS[k] + '}'; }).join('');
+  }
 
-  window.PX = { rich: rich, stripRich: stripRich, ICONS: ICONS, ICON_KEYS: ICON_KEYS, ICON_LABELS: ICON_LABELS, ANCHORS: ANCHORS, svgIcon: svgIcon, safeUrl: safeUrl, mediaUrl: mediaUrl, h: h };
+  window.PX = { rich: rich, stripRich: stripRich, COLORS: COLORS, COLOR_LABELS: COLOR_LABELS, richCss: richCss, ICONS: ICONS, ICON_KEYS: ICON_KEYS, ICON_LABELS: ICON_LABELS, ANCHORS: ANCHORS, svgIcon: svgIcon, safeUrl: safeUrl, mediaUrl: mediaUrl, h: h };
 })();

@@ -199,23 +199,32 @@
     function weightField(label, input) {
       var prev = h('div', { class: 'rp' });
       function upd() { prev.textContent = ''; prev.appendChild(PX.rich(input.value)); if (!input.value) prev.textContent = 'Vista previa'; }
-      function apply(kind) {
+      // Aplica a la selección: quita solo las marcas del mismo tipo (peso o color) y pone la nueva.
+      function apply(which, open, close) {
         var a = input.selectionStart, b = input.selectionEnd; if (a === b) { return; }
-        var sel = PX.stripRich(input.value.slice(a, b));
-        var rep = kind === 'n' ? sel : '[' + kind + ']' + sel + '[/' + kind + ']';
+        var sel = PX.stripRich(input.value.slice(a, b), which);
+        var rep = open ? open + sel + close : sel;
         input.value = input.value.slice(0, a) + rep + input.value.slice(b);
         input.focus(); input.setSelectionRange(a, a + rep.length); upd();
       }
-      var bar = h('div', { class: 'tb' });
+      var bar = h('div', { class: 'tb' }), bar2 = h('div', { class: 'tb' });
       [['l', 'Ligero'], ['n', 'Normal'], ['b', 'Negrita']].forEach(function (x) {
         var bt = h('button', { class: 'b', type: 'button', style: 'font-weight:' + ({ l: 300, n: 400, b: 700 })[x[0]] }, x[1]);
-        bt.onmousedown = function (e) { e.preventDefault(); }; bt.onclick = function () { apply(x[0]); }; bar.append(bt);
+        bt.onmousedown = function (e) { e.preventDefault(); };
+        bt.onclick = function () { x[0] === 'n' ? apply('w') : apply('w', '[' + x[0] + ']', '[/' + x[0] + ']'); }; bar.append(bt);
       });
-      bar.append(h('span', { class: 'hint' }, 'Selecciona texto y elige el peso'));
+      bar.append(h('span', { class: 'hint' }, 'Selecciona texto y elige peso o color'));
+      bar2.append(h('span', { class: 'hint' }, 'Color:'));
+      var auto = h('button', { class: 'sw auto', type: 'button', title: 'Color automático', 'aria-label': 'Color automático' });
+      auto.onmousedown = function (e) { e.preventDefault(); }; auto.onclick = function () { apply('c'); }; bar2.append(auto);
+      Object.keys(PX.COLORS).forEach(function (k) {
+        var sw = h('button', { class: 'sw', type: 'button', title: PX.COLOR_LABELS[k], 'aria-label': PX.COLOR_LABELS[k], style: 'background:' + PX.COLORS[k] });
+        sw.onmousedown = function (e) { e.preventDefault(); };
+        sw.onclick = function () { apply('c', '[c:' + k + ']', '[/c]'); }; bar2.append(sw);
+      });
       input.addEventListener('input', upd); upd();
-      return h('div', null, h('label', null, label), bar, input, prev);
+      return h('div', null, h('label', null, label), bar, bar2, input, prev);
     }
-
     async function setImage(newPath) {
       var old = imgPath, row = cur.banner_image;
       var q = row
