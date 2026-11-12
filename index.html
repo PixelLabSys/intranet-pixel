@@ -98,9 +98,11 @@
 
   .news { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
   .nw { overflow: hidden; }
-  .nw .img { height: 150px; background: var(--chip); display: grid; place-items: center; border-bottom: 1px solid var(--border); }
-  .nw .img img { width: 100%; height: 100%; object-fit: cover; }
-  .nw .img img.ph { width: 46px; height: auto; object-fit: contain; }
+  .nw { align-self: start; }
+  .nw .img { background: var(--chip); border-bottom: 1px solid var(--border); line-height: 0; }
+  .nw .img img { display: block; width: 100%; height: auto; } /* la imagen se ve completa, sin recortar */
+  .nw .img.empty { height: 150px; display: grid; place-items: center; }
+  .nw .img img.ph { width: 46px; height: auto; }
   .nw .b { padding: 16px 20px 20px; }
   .nw h3 { margin: 6px 0; font-size: 14px; font-weight: 500; line-height: 1.35; }
   .nw p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.5; }
@@ -354,7 +356,7 @@
     c.news.slice(0, 2).forEach(function (n) {
       var img = PX.mediaUrl(CFG, n.image_path);
       box.appendChild(h('article', { class: 'box nw' },
-        h('div', { class: 'img' }, img ? h('img', { src: img, alt: '' }) : h('img', { class: 'ph', src: 'icon.png', alt: '' })),
+        h('div', { class: 'img' + (img ? '' : ' empty') }, img ? h('img', { src: img, alt: '' }) : h('img', { class: 'ph', src: 'icon.png', alt: '' })),
         h('div', { class: 'b' }, h('p', { class: 'eyebrow' }, n.category), h('h3', null, PX.rich(n.title)), h('p', null, PX.rich(n.body)), h('div', { class: 'd' }, fmtDate(n.published_on)))));
     });
   }

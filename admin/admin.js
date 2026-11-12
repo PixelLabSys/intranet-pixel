@@ -435,7 +435,7 @@
       var date = h('input', { type: 'date', value: d.published_on });
       var st = h('select', null, h('option', { value: 'draft' }, 'Borrador (no visible)'), h('option', { value: 'published' }, 'Publicada')); st.value = d.status;
       var imgPath = d.image_path || '', uploaded = [];
-      var prev = h('div', { class: 'preview' });
+      var prev = h('div', { class: 'preview', style: 'aspect-ratio:16/9;background-size:contain;background-repeat:no-repeat' });
       function paint() { var u = PX.mediaUrl(CFG, imgPath); prev.textContent = ''; prev.style.backgroundImage = u ? 'url("' + u + '")' : ''; if (!u) prev.textContent = 'Sin imagen'; }
       paint();
       var file = h('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp' }), rm = h('button', { class: 'b dng', type: 'button' }, 'Quitar imagen');
