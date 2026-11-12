@@ -110,7 +110,12 @@
     return String(text || '').replace(re, '');
   }
   function richCss() {
-    return '.w-l{font-weight:300}.w-b{font-weight:700}' + Object.keys(COLORS).map(function (k) { return '.c-' + k + '{color:' + COLORS[k] + '}'; }).join('');
+    // Blanco y Azul navy se invierten con el tema (como el resto de textos): "blanco" = texto claro sobre fondo oscuro y oscuro sobre fondo claro; "navy", al revés.
+    // Sobre una foto de banner (siempre con velo oscuro) el blanco se mantiene blanco.
+    var base = ['terracota', 'dorado', 'marron'].map(function (k) { return '.c-' + k + '{color:' + COLORS[k] + '}'; }).join('');
+    return '.w-l{font-weight:300}.w-b{font-weight:700}' + base +
+      '.c-blanco{color:#ffffff}html:not(.dark) .c-blanco{color:#223050}.hero.foto .c-blanco,html:not(.dark) .hero.foto .c-blanco{color:#ffffff}' +
+      '.c-navy{color:#223050}.dark .c-navy{color:#ede8e1}';
   }
 
   window.PX = { rich: rich, stripRich: stripRich, COLORS: COLORS, COLOR_LABELS: COLOR_LABELS, richCss: richCss, ICONS: ICONS, ICON_KEYS: ICON_KEYS, ICON_LABELS: ICON_LABELS, ANCHORS: ANCHORS, svgIcon: svgIcon, safeUrl: safeUrl, mediaUrl: mediaUrl, h: h };
