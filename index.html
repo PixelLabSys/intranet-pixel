@@ -281,7 +281,7 @@
   /* ---------- Render (todo con createElement/textContent) ---------- */
   function renderBanner(c) {
     var s = c.settings;
-    $('b-eyebrow').textContent = s.banner_eyebrow || '';
+    $('b-eyebrow').textContent = ''; $('b-eyebrow').appendChild(PX.rich(s.banner_eyebrow));
     $('b-title').textContent = ''; $('b-title').appendChild(PX.rich(s.banner_title));
     $('b-text').textContent = ''; $('b-text').appendChild(PX.rich(s.banner_text));
     var url = PX.mediaUrl(CFG, s.banner_image), hero = $('hero');

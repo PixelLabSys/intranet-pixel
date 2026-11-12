@@ -191,7 +191,7 @@
     var file = h('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp' });
     var rm = h('button', { class: 'b dng', type: 'button' }, 'Quitar imagen');
     var inputs = {};
-    inputs.banner_eyebrow = h('input', { type: 'text', maxlength: 60, value: (cur.banner_eyebrow && cur.banner_eyebrow.value) || '' });
+    inputs.banner_eyebrow = h('input', { type: 'text', maxlength: 160, value: (cur.banner_eyebrow && cur.banner_eyebrow.value) || '' });
     inputs.banner_title = h('input', { type: 'text', maxlength: 160, value: (cur.banner_title && cur.banner_title.value) || '' });
     inputs.banner_text = h('textarea', { maxlength: 500 }); inputs.banner_text.value = (cur.banner_text && cur.banner_text.value) || '';
     var save = h('button', { class: 'b pri', type: 'button' }, 'Guardar textos');
@@ -273,7 +273,7 @@
     };
     root.append(
       h('div', { class: 'box' }, h('h2', null, 'Imagen'), prev, h('p', { class: 'eyebrow', style: 'margin-top:10px' }, 'JPG, PNG o WebP · se ajusta a 1920 px de ancho'), h('div', { class: 'actions' }, file, rm)),
-      h('div', { class: 'box' }, h('h2', null, 'Textos'), field('Línea superior (pequeña)', inputs.banner_eyebrow), weightField('Título', inputs.banner_title), weightField('Texto', inputs.banner_text), h('div', { class: 'actions' }, save)),
+      h('div', { class: 'box' }, h('h2', null, 'Textos'), weightField('Línea superior (pequeña)', inputs.banner_eyebrow), weightField('Título', inputs.banner_title), weightField('Texto', inputs.banner_text), h('div', { class: 'actions' }, save)),
       out);
   }
 
