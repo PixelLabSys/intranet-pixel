@@ -152,7 +152,7 @@
     function go(k) {
       current = k; Object.keys(btns).forEach(function (x) { btns[x].classList.toggle('on', x === k); });
       main.textContent = '';
-      var mods = { banner: modBanner, menus: modMenus, noticias: modNews, calendario: modCalendar, admins: modAdmins };
+      var mods = { banner: modBanner, menus: modMenus, noticias: modNews, calendario: modCalendar, herramientas: modTools, admins: modAdmins };
       mods[k] ? mods[k](main, user) : modSoon(main, k);
     }
     show(h('div', { class: 'shell' }, aside, main));
@@ -564,6 +564,109 @@
       };
       formBox.textContent = '';
       formBox.append(h('div', { class: 'box' }, h('h2', null, isNew ? 'Nuevo' : 'Editar'), field('Tipo', type), fb, fe, field('Descripción (opcional)', desc), field('Estado', vis), h('div', { class: 'actions' }, save, cancel), out2));
+      formBox.firstChild.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    load();
+  }
+
+
+  /* ---------------- Herramientas ---------------- */
+  async function modTools(root) {
+    root.append(h('p', { class: 'eyebrow' }, 'Accesos'), h('h1', null, 'Herramientas'));
+    var formBox = h('div'), catBox = h('div', { class: 'box' }), toolBox = h('div'), out = h('div'), cats = [], tools = [], menus = [];
+    root.append(formBox, catBox, toolBox, out);
+    async function load() {
+      var a = await sb.from('tool_categories').select('*').order('position'), b = await sb.from('tools').select('*').order('position'), c = await sb.from('menu_items').select('id,tool_id');
+      if (a.error || b.error || c.error) return setMsg(out, 'err', 'No se pudo cargar: ' + friendly(a.error || b.error || c.error));
+      cats = a.data; tools = b.data; menus = c.data; draw();
+    }
+    async function reorder(table, list, item, dir) {
+      var i = list.findIndex(function (x) { return x.id === item.id; }), o = list[i + dir]; if (!o) return;
+      list = list.slice(); list[i] = o; list[i + dir] = item;
+      for (var k = 0; k < list.length; k++) if (list[k].position !== k) { var r = await sb.from(table).update({ position: k }).eq('id', list[k].id); if (r.error) return setMsg(out, 'err', friendly(r.error)); }
+      load();
+    }
+    function visBtn(table, it) {
+      var b = h('button', { class: 'b', type: 'button' }, it.visible ? 'Visible' : 'Oculta' + (table === 'tools' ? '' : ''));
+      b.onclick = async function () { var r = await sb.from(table).update({ visible: !it.visible }).eq('id', it.id).eq('updated_at', it.updated_at).select('id'); if (r.error) setMsg(out, 'err', friendly(r.error)); else if (!r.data.length) setMsg(out, 'err', 'Cambió mientras lo editabas. Se recargó la lista.'); load(); };
+      return b;
+    }
+    function ib(label, icon, fn, dis) { var b = h('button', { class: 'ib', type: 'button', 'aria-label': label, disabled: dis }, PX.svgIcon(icon, 14)); b.onclick = fn; return b; }
+    function draw() {
+      catBox.textContent = ''; catBox.append(h('h2', null, 'Categorías (pestañas)'));
+      cats.forEach(function (c, i) {
+        var n = tools.filter(function (t) { return t.category_id === c.id; }).length;
+        var row = h('div', { class: 'row' }, h('div', { class: 'grow' }, h('div', null, c.label), h('div', { class: 'sub' }, n + ' herramientas')),
+          ib('Subir', 'up', function () { reorder('tool_categories', cats, c, -1); }, i === 0), ib('Bajar', 'down', function () { reorder('tool_categories', cats, c, 1); }, i === cats.length - 1),
+          ib('Renombrar', 'edit', function () { catForm(c); }), visBtn('tool_categories', c),
+          ib('Eliminar', 'trash', async function () {
+            if (n) return setMsg(out, 'err', 'La categoría "' + c.label + '" tiene ' + n + ' herramientas. Muévelas o elimínalas primero.');
+            if (!confirm('¿Eliminar la categoría "' + c.label + '"?')) return;
+            var r = await sb.from('tool_categories').delete().eq('id', c.id); if (r.error) return setMsg(out, 'err', friendly(r.error)); load();
+          }));
+        catBox.append(row);
+      });
+      var add = h('button', { class: 'b', type: 'button' }, '+ Nueva categoría'); add.onclick = function () { catForm(null); };
+      catBox.append(h('div', { class: 'actions' }, add));
+
+      toolBox.textContent = '';
+      cats.forEach(function (c) {
+        var box = h('div', { class: 'box' }, h('h2', null, c.label)), list = tools.filter(function (t) { return t.category_id === c.id; }).sort(function (a, b) { return a.position - b.position; });
+        if (!list.length) box.append(h('p', { class: 'eyebrow' }, 'Sin herramientas'));
+        list.forEach(function (t, i) {
+          var uses = menus.filter(function (m) { return m.tool_id === t.id; }).length;
+          box.append(h('div', { class: 'row' }, h('span', { class: 'ico', style: 'width:32px;height:32px;display:grid;place-items:center;color:var(--terracota)' }, PX.svgIcon(t.icon, 18)),
+            h('div', { class: 'grow' }, h('div', null, t.name), h('div', { class: 'sub' }, t.url)),
+            ib('Subir', 'up', function () { reorder('tools', list, t, -1); }, i === 0), ib('Bajar', 'down', function () { reorder('tools', list, t, 1); }, i === list.length - 1),
+            ib('Editar', 'edit', function () { toolForm(t); }), visBtn('tools', t),
+            ib('Eliminar', 'trash', async function () {
+              if (!confirm('¿Eliminar "' + t.name + '"?' + (uses ? ' También desaparecerá de ' + uses + ' acceso(s) rápido(s) o menú(s) que la usan.' : ''))) return;
+              var r = await sb.from('tools').delete().eq('id', t.id); if (r.error) return setMsg(out, 'err', friendly(r.error)); load();
+            })));
+        });
+        var addt = h('button', { class: 'b', type: 'button' }, '+ Agregar herramienta'); addt.onclick = function () { toolForm(null, c.id); };
+        box.append(h('div', { class: 'actions' }, addt)); toolBox.append(box);
+      });
+    }
+    function catForm(c) {
+      var name = h('input', { type: 'text', maxlength: 60, value: c ? c.label : '' }), out2 = h('div');
+      var save = h('button', { class: 'b pri', type: 'button' }, 'Guardar'), cancel = h('button', { class: 'b', type: 'button' }, 'Cancelar'); cancel.onclick = function () { formBox.textContent = ''; };
+      save.onclick = async function () {
+        var v = name.value.trim(); if (!v) return setMsg(out2, 'err', 'Escribe el nombre.');
+        var r = c ? await sb.from('tool_categories').update({ label: v }).eq('id', c.id).eq('updated_at', c.updated_at).select('id') : await sb.from('tool_categories').insert({ label: v, position: cats.length }).select('id');
+        if (r.error) return setMsg(out2, 'err', friendly(r.error));
+        if (c && !r.data.length) return setMsg(out2, 'err', 'Otra persona modificó esta categoría. Cierra y vuelve a abrirla.');
+        formBox.textContent = ''; load();
+      };
+      formBox.textContent = ''; formBox.append(h('div', { class: 'box' }, h('h2', null, c ? 'Renombrar categoría' : 'Nueva categoría'), field('Nombre', name), h('div', { class: 'actions' }, save, cancel), out2));
+      formBox.firstChild.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    function toolForm(t, catId) {
+      var d = t || { name: '', icon: 'link', url: '', category_id: catId || (cats[0] && cats[0].id) };
+      var name = h('input', { type: 'text', maxlength: 80, value: d.name }), url = h('input', { type: 'url', placeholder: 'https://…', value: d.url });
+      var icon = h('select'); PX.ICON_KEYS.forEach(function (k) { icon.append(h('option', { value: k }, PX.ICON_LABELS[k] || k)); }); icon.value = d.icon;
+      var pv = h('span', { class: 'ico', style: 'width:40px;height:40px;display:grid;place-items:center;color:var(--terracota);border:1px solid var(--border);border-radius:8px' });
+      function paint() { pv.textContent = ''; pv.append(PX.svgIcon(icon.value, 22)); } icon.onchange = paint; paint();
+      var cat = h('select'); cats.forEach(function (c) { cat.append(h('option', { value: c.id }, c.label)); }); cat.value = d.category_id;
+      var out2 = h('div'), save = h('button', { class: 'b pri', type: 'button' }, 'Guardar'), cancel = h('button', { class: 'b', type: 'button' }, 'Cancelar'); cancel.onclick = function () { formBox.textContent = ''; };
+      save.onclick = async function () {
+        var rec = { name: name.value.trim(), icon: icon.value, url: url.value.trim(), category_id: cat.value };
+        if (!rec.name) return setMsg(out2, 'err', 'Escribe el nombre.');
+        if (!/^https:\/\/\S+$/.test(rec.url) || !PX.safeUrl(rec.url)) return setMsg(out2, 'err', 'La dirección debe empezar por https://');
+        busy(save, true); var r;
+        if (!t) { rec.position = tools.filter(function (x) { return x.category_id === rec.category_id; }).length; r = await sb.from('tools').insert(rec).select('id'); }
+        else {
+          if (t.category_id !== rec.category_id) rec.position = tools.filter(function (x) { return x.category_id === rec.category_id; }).length;
+          r = await sb.from('tools').update(rec).eq('id', t.id).eq('updated_at', t.updated_at).select('id');
+          if (!r.error && !r.data.length) { busy(save, false); return setMsg(out2, 'err', 'Otra persona modificó esta herramienta. Cierra y vuelve a abrirla.'); }
+        }
+        busy(save, false); if (r.error) return setMsg(out2, 'err', friendly(r.error));
+        formBox.textContent = ''; setMsg(out, 'ok', 'Guardado.'); load();
+      };
+      formBox.textContent = '';
+      formBox.append(h('div', { class: 'box' }, h('h2', null, t ? 'Editar herramienta' : 'Nueva herramienta'), field('Nombre', name), field('Enlace', url),
+        h('div', { class: 'grid2' }, field('Categoría', cat), h('div', null, h('label', null, 'Ícono'), h('div', { class: 'actions', style: 'margin-top:0' }, icon, pv))),
+        h('div', { class: 'actions' }, save, cancel), out2));
       formBox.firstChild.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
     load();
