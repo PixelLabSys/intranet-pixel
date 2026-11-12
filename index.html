@@ -42,6 +42,7 @@
   .hero { position: relative; min-height: var(--hh, 400px); display: flex; flex-direction: column;
     background: var(--surface); border-bottom: 1px solid var(--border); background-size: cover; background-position: center; }
   .hero > .container { position: relative; z-index: 3; width: 100%; }
+  .hero > .container.navwrap { z-index: 20; } /* el menú desplegable queda por encima del texto del banner */
   .hero .clip { position: absolute; inset: 0; overflow: hidden; z-index: 0; pointer-events: none; }
   .hero.foto .clip::before { content: ""; position: absolute; inset: 0; background: rgba(16,22,31,.55); }
   .hero.foto h1, .hero.foto .hero-text p, .hero.foto nav a.l, .hero.foto nav button.l { color: #fff; }
@@ -170,6 +171,14 @@
   }
   @media (max-width: 560px) {
     .container { padding: 0 16px; }
+    /* Accesos rápidos y herramientas en 2 columnas: menos desplazamiento en el celular */
+    .quick .bar { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; padding: 6px; border-radius: 16px; }
+    .quick a { padding: 10px 8px; gap: 8px; font-size: 12.5px; line-height: 1.25; }
+    .grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+    a.card { flex-direction: column; align-items: flex-start; gap: 10px; padding: 14px; font-size: 13px; }
+    .tabs { justify-content: flex-start; }
+    section.blk { margin-top: 44px; }
+    footer { padding-bottom: calc(32px + env(safe-area-inset-bottom)); }
     .logo { height: 18px; }
     .hero { min-height: min(var(--hh, 340px), 360px); }
   }
@@ -179,7 +188,7 @@
 <main>
   <div class="hero" id="hero">
     <div class="clip"><div class="px" id="px" aria-hidden="true"><div class="px-g" id="pxg"></div></div></div>
-    <div class="container">
+    <div class="container navwrap">
       <nav>
         <img class="logo logo-claro" src="logo-claro.png" alt="Pixel Graphic">
         <img class="logo logo-oscuro" src="logo-oscuro.png" alt="Pixel Graphic">
@@ -248,6 +257,7 @@
     try { localStorage.setItem('theme', d ? 'dark' : 'light'); } catch (e) {}
   };
   $('menubtn').append(PX.svgIcon('menu'));
+  $('topnav').addEventListener('click', function (e) { if (e.target.closest('a')) { document.body.classList.remove('menu-open'); $('menubtn').setAttribute('aria-expanded', 'false'); } });
   $('menubtn').onclick = function () { var o = document.body.classList.toggle('menu-open'); $('menubtn').setAttribute('aria-expanded', o); };
 
   /* ---------- Fondo de píxeles (réplica de PixelBackground) ---------- */
