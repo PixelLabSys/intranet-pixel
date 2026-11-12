@@ -209,46 +209,44 @@
   }
 
 
-  /* Editor de imagen: encuadra la imagen dentro del espacio (canva) con zoom y arrastre. Lo que ves es lo que se publica.
-     Devuelve un Blob JPEG ya recortado a la proporción del espacio (se re-codifica: también elimina metadatos EXIF). */
-  function imageEditor(file, rw, rh, outW, title) {
+  /* Editor de imagen (como en Sistema de Solicitudes): Zoom + Alto del espacio + arrastrar. Lo que ves es lo que se publica.
+     opts: { refW, alto, altoMin, altoMax, outW, title }. "Alto" se expresa en px sobre un ancho de referencia refW.
+     Devuelve { blob, alto } (JPEG ya recortado; al re-codificar se eliminan metadatos EXIF) o null si se cancela. */
+  function imageEditor(file, opts) {
     return new Promise(function (resolve, reject) {
       var url = URL.createObjectURL(file), im = new Image();
       im.onerror = function () { URL.revokeObjectURL(url); reject(new Error('El archivo no es una imagen válida (usa JPG, PNG o WebP).')); };
       im.onload = function () {
         URL.revokeObjectURL(url);
-        var vw = Math.min(560, window.innerWidth - 80), vh = Math.round(vw * rh / rw);
+        var vw = Math.min(560, window.innerWidth - 80), alto = opts.alto, vh = Math.round(vw * alto / opts.refW);
         var cv = h('canvas', { width: vw, height: vh }), ctx = cv.getContext('2d');
-        var contain = Math.min(vw / im.width, vh / im.height), cover = Math.max(vw / im.width, vh / im.height);
-        var st = { s: cover, x: 0, y: 0 };
-        var range = h('input', { type: 'range', min: Math.round(contain / cover * 50) / 100, max: 4, step: 0.01, value: 1, 'aria-label': 'Tamaño de la imagen' });
-        function clamp() { var hw = im.width * st.s / 2 + vw / 2 - 40, hh = im.height * st.s / 2 + vh / 2 - 40; st.x = Math.max(-hw, Math.min(hw, st.x)); st.y = Math.max(-hh, Math.min(hh, st.y)); }
-        function paint(c, cx, k) {
-          cx.fillStyle = '#171f2b'; cx.fillRect(0, 0, c.width, c.height);
-          cx.drawImage(im, c.width / 2 + st.x * k - im.width * st.s * k / 2, c.height / 2 + st.y * k - im.height * st.s * k / 2, im.width * st.s * k, im.height * st.s * k);
-        }
-        function draw() { clamp(); paint(cv, ctx, 1); }
-        function setMult(m) { st.s = cover * m; range.value = m; draw(); }
-        range.oninput = function () { setMult(parseFloat(range.value)); };
+        var st = { m: 1, x: 0, y: 0 }; // m: zoom (1 = cubre el espacio); x,y: desplazamiento
+        function cover() { return Math.max(vw / im.width, vh / im.height); }
+        var zoom = h('input', { type: 'range', min: 1, max: 4, step: 0.01, value: 1, 'aria-label': 'Zoom' });
+        var altoR = h('input', { type: 'range', min: opts.altoMin, max: opts.altoMax, step: 5, value: alto, 'aria-label': 'Alto' }), altoV = h('span', { class: 'hint', style: 'min-width:48px;text-align:right' }, alto + 'px');
+        function clamp() { var s = cover() * st.m, mx = Math.max(0, (im.width * s - vw) / 2), my = Math.max(0, (im.height * s - vh) / 2); st.x = Math.max(-mx, Math.min(mx, st.x)); st.y = Math.max(-my, Math.min(my, st.y)); }
+        function paint(c, cx, k) { var s = cover() * st.m * k; cx.drawImage(im, c.width / 2 + st.x * k - im.width * s / 2, c.height / 2 + st.y * k - im.height * s / 2, im.width * s, im.height * s); }
+        function draw() { clamp(); ctx.clearRect(0, 0, vw, vh); paint(cv, ctx, 1); }
+        zoom.oninput = function () { st.m = parseFloat(zoom.value); draw(); };
+        altoR.oninput = function () { alto = parseInt(altoR.value, 10); vh = Math.round(vw * alto / opts.refW); cv.height = vh; altoV.textContent = alto + 'px'; draw(); };
         var drag = null;
         cv.onpointerdown = function (e) { drag = { x: e.clientX, y: e.clientY, ox: st.x, oy: st.y }; cv.setPointerCapture(e.pointerId); };
-        cv.onpointermove = function (e) { if (!drag) return; st.x = drag.ox + (e.clientX - drag.x) * (vw / cv.clientWidth); st.y = drag.oy + (e.clientY - drag.y) * (vw / cv.clientWidth); draw(); };
+        cv.onpointermove = function (e) { if (!drag) return; var k = vw / cv.clientWidth; st.x = drag.ox + (e.clientX - drag.x) * k; st.y = drag.oy + (e.clientY - drag.y) * k; draw(); };
         cv.onpointerup = cv.onpointercancel = function () { drag = null; };
-        cv.addEventListener('wheel', function (e) { e.preventDefault(); var m = Math.min(4, Math.max(parseFloat(range.min), st.s / cover * (e.deltaY < 0 ? 1.06 : 0.94))); setMult(m); }, { passive: false });
-        var fit = h('button', { class: 'b', type: 'button' }, 'Ver completa'), fill = h('button', { class: 'b', type: 'button' }, 'Llenar el espacio'), center = h('button', { class: 'b', type: 'button' }, 'Centrar');
-        fit.onclick = function () { st.x = st.y = 0; setMult(contain / cover); }; fill.onclick = function () { st.x = st.y = 0; setMult(1); }; center.onclick = function () { st.x = st.y = 0; draw(); };
-        var ok = h('button', { class: 'b pri', type: 'button' }, 'Aplicar'), no = h('button', { class: 'b', type: 'button' }, 'Cancelar');
-        var ov = h('div', { class: 'ov', role: 'dialog', 'aria-modal': 'true' }, h('div', { class: 'dlg' }, h('h2', null, title || 'Encuadra la imagen'),
-          h('p', { class: 'eyebrow' }, 'Arrastra para mover · rueda o barra para el tamaño. Lo que ves es lo que se publica.'), cv,
-          h('label', null, 'Tamaño'), range, h('div', { class: 'actions' }, fit, fill, center), h('div', { class: 'actions' }, ok, no)));
+        cv.addEventListener('wheel', function (e) { e.preventDefault(); st.m = Math.min(4, Math.max(1, st.m * (e.deltaY < 0 ? 1.06 : 0.94))); zoom.value = st.m; draw(); }, { passive: false });
+        var ok = h('button', { class: 'b pri', type: 'button' }, 'Usar esta imagen'), no = h('button', { class: 'b', type: 'button' }, 'Cancelar');
+        var ov = h('div', { class: 'ov', role: 'dialog', 'aria-modal': 'true' }, h('div', { class: 'dlg' }, h('h2', null, opts.title || 'Encuadra la imagen'), cv,
+          h('div', { class: 'tb' }, h('label', { style: 'min-width:40px;margin:0' }, 'Zoom'), zoom),
+          h('div', { class: 'tb' }, h('label', { style: 'min-width:40px;margin:0' }, 'Alto'), altoR, altoV),
+          h('p', { class: 'eyebrow' }, 'Arrastra la imagen para ajustar qué parte se ve.'), h('div', { class: 'actions' }, ok, no)));
         function close(v) { document.removeEventListener('keydown', onKey); ov.remove(); resolve(v); }
         function onKey(e) { if (e.key === 'Escape') close(null); }
         document.addEventListener('keydown', onKey);
         no.onclick = function () { close(null); };
         ok.onclick = function () {
-          var out = document.createElement('canvas'); out.width = outW; out.height = Math.round(outW * rh / rw);
-          paint(out, out.getContext('2d'), outW / vw);
-          out.toBlob(function (b) { b ? close(b) : close(null); }, 'image/jpeg', 0.88);
+          var out = document.createElement('canvas'); out.width = opts.outW; out.height = Math.round(opts.outW * alto / opts.refW);
+          paint(out, out.getContext('2d'), opts.outW / vw);
+          out.toBlob(function (b) { b ? close({ blob: b, alto: alto }) : close(null); }, 'image/jpeg', 0.88);
         };
         document.body.appendChild(ov); draw(); ok.focus();
       };
@@ -276,6 +274,12 @@
     inputs.banner_text = h('textarea', { maxlength: 500 }); inputs.banner_text.value = (cur.banner_text && cur.banner_text.value) || '';
     var save = h('button', { class: 'b pri', type: 'button' }, 'Guardar textos');
     // Barra de pesos: aplica Ligero / Normal / Negrita al texto seleccionado (guarda marcas [l] [b]).
+    async function setHeight(px) {
+      var row = cur.banner_height, v = String(px);
+      if (row && row.value === v) return;
+      var q = row ? sb.from('site_settings').update({ value: v }).eq('key', 'banner_height').eq('updated_at', row.updated_at).select('key,value,updated_at') : sb.from('site_settings').insert({ key: 'banner_height', value: v }).select('key,value,updated_at');
+      var u = await q; if (u.error) throw u.error; if (!u.data.length) throw new Error('Otra persona modificó el banner. Recarga la página.'); cur.banner_height = u.data[0];
+    }
     async function setImage(newPath) {
       var old = imgPath, row = cur.banner_image;
       var q = row
@@ -293,11 +297,12 @@
     async function processFile(f) {
       setMsg(out, '', 'Procesando imagen…');
       try {
-        var blob = await imageEditor(f, 16, 6, 1920, 'Encuadra el banner'); if (!blob) { setMsg(out, '', ''); return; }
+        var ed = await imageEditor(f, { refW: 1080, alto: parseInt(cur.banner_height && cur.banner_height.value, 10) || 400, altoMin: 240, altoMax: 560, outW: 1920, title: 'Encuadra el banner' }); if (!ed) { setMsg(out, '', ''); return; }
+        var blob = ed.blob;
         var name = crypto.randomUUID() + '.jpg';
         var up = await sb.storage.from('media').upload(name, blob, { contentType: 'image/jpeg', upsert: false });
         if (up.error) throw up.error;
-        try { await setImage(name); } catch (e) { await sb.storage.from('media').remove([name]); throw e; }
+        try { await setImage(name); await setHeight(ed.alto); } catch (e) { await sb.storage.from('media').remove([name]); throw e; }
         setMsg(out, 'ok', 'Imagen actualizada. Ya se ve en la intranet.');
       } catch (e) { setMsg(out, 'err', friendly(e)); }
     }
@@ -485,7 +490,7 @@
       var date = h('input', { type: 'date', value: d.published_on });
       var st = h('select', null, h('option', { value: 'draft' }, 'Borrador (no visible)'), h('option', { value: 'published' }, 'Publicada')); st.value = d.status;
       var imgPath = d.image_path || '', uploaded = [];
-      var prev = h('div', { class: 'preview', style: 'aspect-ratio:16/9;background-repeat:no-repeat' });
+      var prev = h('div', { class: 'preview', style: 'aspect-ratio:auto;height:180px;background-repeat:no-repeat' });
       function paint() { var u = PX.mediaUrl(CFG, imgPath); prev.textContent = ''; prev.style.backgroundImage = u ? 'url("' + u + '")' : ''; if (!u) prev.textContent = 'Sin imagen'; }
       paint();
       var file = h('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp' }), rm = h('button', { class: 'b dng', type: 'button' }, 'Quitar imagen');
@@ -496,7 +501,8 @@
       async function processFile(f) {
         setMsg(out2, '', 'Procesando imagen…');
         try {
-          var blob = await imageEditor(f, 16, 9, 1280, 'Encuadra la imagen de la noticia'); if (!blob) { setMsg(out2, '', ''); return; }
+          var ed = await imageEditor(f, { refW: 320, alto: 180, altoMin: 100, altoMax: 320, outW: 1280, title: 'Encuadra la imagen de la noticia' }); if (!ed) { setMsg(out2, '', ''); return; }
+          var blob = ed.blob;
           var name = crypto.randomUUID() + '.jpg';
           var up = await sb.storage.from('media').upload(name, blob, { contentType: 'image/jpeg', upsert: false });
           if (up.error) throw up.error;

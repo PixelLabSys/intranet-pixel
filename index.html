@@ -39,7 +39,7 @@
   svg { flex-shrink: 0; }
 
   /* ===== Hero ===== */
-  .hero { position: relative; min-height: 400px; display: flex; flex-direction: column;
+  .hero { position: relative; min-height: var(--hh, 400px); display: flex; flex-direction: column;
     background: var(--surface); border-bottom: 1px solid var(--border); background-size: cover; background-position: center; }
   .hero > .container { position: relative; z-index: 3; width: 100%; }
   .hero .clip { position: absolute; inset: 0; overflow: hidden; z-index: 0; pointer-events: none; }
@@ -98,10 +98,12 @@
 
   .news { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
   .nw { overflow: hidden; }
-  /* Espacio fijo para la imagen (mismo tamaño en todas las tarjetas): la imagen se encaja completa dentro. */
-  .nw .img { position: relative; aspect-ratio: 16 / 9; overflow: hidden; background: var(--chip); border-bottom: 1px solid var(--border); display: grid; place-items: center; }
-  .nw .img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; } /* la imagen ya viene encuadrada desde el backoffice */
-  .nw .img img.ph { position: static; width: 46px; height: auto; }
+  /* La imagen de la noticia ya viene encuadrada (zoom y alto) desde el backoffice: se muestra completa, con su proporción. */
+  .nw { align-self: start; }
+  .nw .img { background: var(--chip); border-bottom: 1px solid var(--border); line-height: 0; }
+  .nw .img img { display: block; width: 100%; height: auto; }
+  .nw .img.empty { height: 150px; display: grid; place-items: center; }
+  .nw .img img.ph { width: 46px; }
   .nw .b { padding: 16px 20px 20px; }
   .nw h3 { margin: 6px 0; font-size: 14px; font-weight: 500; line-height: 1.35; }
   .nw p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.5; }
@@ -168,7 +170,7 @@
   @media (max-width: 560px) {
     .container { padding: 0 16px; }
     .logo { height: 18px; }
-    .hero { min-height: 340px; }
+    .hero { min-height: min(var(--hh, 340px), 360px); }
   }
 </style>
 </head>
@@ -296,7 +298,8 @@
     $('b-eyebrow').textContent = ''; $('b-eyebrow').appendChild(PX.rich(s.banner_eyebrow));
     $('b-title').textContent = ''; $('b-title').appendChild(PX.rich(s.banner_title));
     $('b-text').textContent = ''; $('b-text').appendChild(PX.rich(s.banner_text));
-    var url = PX.mediaUrl(CFG, s.banner_image), hero = $('hero');
+    var url = PX.mediaUrl(CFG, s.banner_image), hero = $('hero'), bh = parseInt(s.banner_height, 10);
+    if (bh >= 200 && bh <= 600) hero.style.setProperty('--hh', bh + 'px');
     if (url) {
       var im = new Image();
       im.onload = function () { hero.style.backgroundImage = 'url("' + url + '")'; hero.classList.add('foto'); $('px').remove(); };
@@ -355,7 +358,7 @@
     c.news.slice(0, 2).forEach(function (n) {
       var img = PX.mediaUrl(CFG, n.image_path);
       box.appendChild(h('article', { class: 'box nw' },
-        h('div', { class: 'img' }, img ? h('img', { src: img, alt: '' }) : h('img', { class: 'ph', src: 'icon.png', alt: '' })),
+        h('div', { class: 'img' + (img ? '' : ' empty') }, img ? h('img', { src: img, alt: '' }) : h('img', { class: 'ph', src: 'icon.png', alt: '' })),
         h('div', { class: 'b' }, h('p', { class: 'eyebrow' }, n.category), h('h3', null, PX.rich(n.title)), h('p', null, PX.rich(n.body)), h('div', { class: 'd' }, fmtDate(n.published_on)))));
     });
   }
