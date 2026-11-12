@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="es" class="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Intranet Pixel</title>
+<link rel="icon" href="icon.png">
+<script>
+  /* Anti-destello del tema (design system §8). Por defecto: oscuro. */
+  try { if (localStorage.getItem('theme') === 'light') document.documentElement.classList.remove('dark'); } catch (e) {}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+<style>
+  /* ===== Tokens: Pixel Graphic Design System v2 (PIXEL PLANTILLA BASE) ===== */
+  :root {
+    --bg: #ffffff;  --surface: #f7f5f2;  --surface-hover: #f3f0ec;
+    --fg: #223050;  --border: #e7e2dc;
+    --muted: #6e6560;  --subtle: #8a8177;
+    --chip: #f0ede8;  --icon-muted: #a39c95;
+    --navy: #223050;  --navy-hover: #33456B;  --terracota: #D18259;
+    --font-sans: "Inter", Arial, Helvetica, sans-serif;
+    --font-mono: var(--font-sans);
+  }
+  .dark {
+    --bg: #10161f;  --surface: #171f2b;  --surface-hover: #212b3a;
+    --fg: #ede8e1;  --border: #2b3542;
+    --muted: #b8b2a8;  --subtle: #8b8579;
+    --chip: #1d2733;  --icon-muted: #5f6b78;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; background: var(--bg); color: var(--fg);
+    font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
+  main { flex: 1; }
+  .container { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+  .eyebrow { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--subtle); margin: 0 0 4px; }
+
+  /* ===== Hero ===== */
+  .hero { position: relative; min-height: 400px; display: flex; flex-direction: column; overflow: hidden;
+    background: var(--surface); border-bottom: 1px solid var(--border); background-size: cover; background-position: center; }
+  .hero > .container { position: relative; z-index: 1; width: 100%; }
+  .hero.foto::before { content: ""; position: absolute; inset: 0; background: rgba(16,22,31,.55); }
+  .hero.foto h1, .hero.foto .hero-text p, .hero.foto nav a.l { color: #fff; }
+  .px { position: absolute; inset: 0; pointer-events: none; overflow: hidden;
+    -webkit-mask-image: radial-gradient(ellipse at center, black 20%, transparent 75%); mask-image: radial-gradient(ellipse at center, black 20%, transparent 75%); }
+  .px-g { display: grid; width: 100%; height: 100%; grid-template-columns: repeat(46, 1fr); grid-template-rows: repeat(28, 1fr); }
+  .pc { margin: 1px; border-radius: 2px; opacity: .08; animation: breathe var(--dur) ease-in-out var(--delay) infinite; }
+  @keyframes breathe { 0%,100% { opacity: .08; } 50% { opacity: var(--max); } }
+  @media (prefers-reduced-motion: reduce) { .pc { animation: none; opacity: calc(var(--max) * .6); } }
+
+  nav { display: flex; align-items: center; gap: 24px; padding: 20px 0; }
+  nav .links { display: flex; gap: 22px; font-size: 13px; font-weight: 500; }
+  nav a.l { color: var(--muted); text-decoration: none; }
+  nav a.l:hover { color: var(--fg); }
+  nav .right { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+  .theme { display: grid; place-items: center; width: 34px; height: 34px; color: var(--muted); background: transparent;
+    border: 1px solid var(--border); border-radius: 8px; cursor: pointer; }
+  .theme:hover { background: var(--surface-hover); color: var(--fg); }
+  .theme svg, .quick svg, .ico svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .theme svg { width: 18px; height: 18px; }
+  .theme .sun { display: none; } .dark .theme .sun { display: block; } .dark .theme .moon { display: none; }
+  .logo { height: 46px; width: auto; display: block; }
+  .logo-claro { display: none; } .dark .logo-claro { display: block; } .dark .logo-oscuro { display: none; }
+
+  .hero-text { margin-top: auto; margin-bottom: auto; padding-top: 36px; padding-bottom: 72px; }
+  .hero-text h1 { margin: 0 0 12px; font-size: clamp(32px, 5.5vw, 48px); font-weight: 500; letter-spacing: -.02em; line-height: 1.1; }
+  .hero-text p { margin: 0; max-width: 460px; font-size: 14px; font-weight: 300; color: var(--muted); line-height: 1.6; }
+
+  /* ===== Accesos rápidos ===== */
+  .quick { position: relative; margin-top: -28px; z-index: 2; }
+  .quick .bar { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px; padding: 6px 12px;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 999px; }
+  .quick a { display: inline-flex; align-items: center; gap: 10px; padding: 10px 14px; font-size: 13px; font-weight: 500;
+    color: var(--fg); text-decoration: none; border-radius: 999px; }
+  .quick a:hover { background: var(--surface-hover); }
+  .quick svg { width: 18px; height: 18px; color: var(--terracota); }
+
+  /* ===== Secciones ===== */
+  section.blk { margin-top: 56px; }
+  h2.t { margin: 0 0 18px; font-size: 20px; font-weight: 500; letter-spacing: -.01em; }
+  .two { display: grid; grid-template-columns: 1.7fr 1fr; gap: 40px; }
+  .box { border: 1px solid var(--border); border-radius: 12px; background: var(--bg); }
+
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .chip { font-family: var(--font-mono); font-size: 11px; padding: 4px 10px; color: var(--muted); background: transparent;
+    border: 1px solid var(--border); border-radius: 8px; cursor: pointer; }
+  .chip:hover { background: var(--surface-hover); }
+  .chip.on { background: var(--fg); border-color: var(--fg); color: var(--bg); }
+
+  .news { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
+  .nw { overflow: hidden; }
+  .nw .img { height: 140px; background: var(--chip); display: grid; place-items: center; border-bottom: 1px solid var(--border); }
+  .nw .img img { width: 100%; height: 100%; object-fit: cover; }
+  .nw .img img.ph { width: 46px; height: auto; object-fit: contain; }
+  .nw .b { padding: 16px 20px 20px; }
+  .nw h3 { margin: 6px 0; font-size: 14px; font-weight: 500; line-height: 1.35; }
+  .nw p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.5; }
+  .nw .d { margin-top: 10px; font-family: var(--font-mono); font-size: 11px; color: var(--subtle); }
+
+  /* ===== Calendario ===== */
+  .cal { padding: 20px; }
+  .cal-h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; font-size: 13px; font-weight: 500; }
+  #mes::first-letter { text-transform: uppercase; }
+  .cal-h button { font: inherit; font-size: 18px; width: 30px; height: 30px; color: var(--muted); background: none; border: 0; border-radius: 8px; cursor: pointer; }
+  .cal-h button:hover { background: var(--surface-hover); color: var(--fg); }
+  .cal-g { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-size: 12px; }
+  .cal-g .dn { font-family: var(--font-mono); font-size: 10px; letter-spacing: .08em; color: var(--subtle); padding: 4px 0; }
+  .cal-g .dy { padding: 8px 0; border-radius: 8px; position: relative; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .cal-g .dy:hover { background: var(--surface-hover); }
+  .cal-g .dy.today { background: var(--fg); color: var(--bg); font-weight: 500; }
+  .cal-g .dy.ev::after { content: ""; position: absolute; left: 50%; bottom: 3px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: var(--terracota); }
+  .evs { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px; display: grid; gap: 8px; }
+  .ev-i { display: flex; gap: 12px; align-items: center; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; }
+  .ev-i b { font-size: 16px; font-weight: 500; line-height: 1; text-align: center; min-width: 30px; }
+  .ev-i small { display: block; font-family: var(--font-mono); font-size: 10px; color: var(--subtle); text-transform: uppercase; }
+  .ev-none { font-size: 12px; color: var(--subtle); text-align: center; padding: 4px 0; }
+
+  /* ===== Herramientas ===== */
+  .tools-h { text-align: center; }
+  .tabs { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 0 0 18px; }
+  #q { display: block; width: 100%; max-width: 420px; margin: 0 auto 22px; padding: 8px 12px; font: inherit; font-size: 13px; color: var(--fg);
+    background: var(--surface-hover); border: 1px solid var(--border); border-radius: 8px; }
+  #q::placeholder { color: var(--subtle); }
+  #q:focus { outline: 1px solid var(--fg); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+  a.card { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 12px; color: var(--fg); text-decoration: none; font-size: 13px; font-weight: 500; line-height: 1.3; }
+  a.card:hover, a.card:focus-visible { background: var(--surface-hover); outline: none; border-color: var(--icon-muted); }
+  .ico { flex-shrink: 0; width: 36px; height: 36px; border-radius: 8px; background: var(--surface); border: 1px solid var(--border);
+    color: var(--terracota); display: grid; place-items: center; }
+  .ico svg { width: 18px; height: 18px; }
+  .hidden { display: none !important; }
+  #vacio { text-align: center; color: var(--subtle); font-size: 13px; }
+
+  /* ===== Pata ===== */
+  footer { padding: 64px 0 32px; text-align: center; }
+  footer img { height: 44px; width: auto; max-width: 80%; }
+  html:not(.dark) footer img { filter: brightness(0); opacity: .8; }  /* pata blanca → oscura en tema claro */
+
+  @media (max-width: 820px) {
+    .two { grid-template-columns: 1fr; gap: 48px; }
+    nav .links { display: none; }
+    .quick .bar { border-radius: 12px; justify-content: flex-start; }
+  }
+  @media (max-width: 560px) {
+    .container { padding: 0 16px; }
+    .logo { height: 36px; }
+    .hero { min-height: 340px; }
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-card" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h4"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-briefcase" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="7" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></symbol>
+  <symbol id="i-ops" viewBox="0 0 24 24"><path d="M6 2h9l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z"/><path d="M15 2v5h5"/><path d="M9 13l2 2 4-4"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M9 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-6-6h-3"/><path d="M13 3v6h6"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></symbol>
+  <symbol id="i-activity" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></symbol>
+  <symbol id="i-zap" viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></symbol>
+</svg>
+
+<main>
+  <!-- HERO: fondo de píxeles de la plantilla. Si existe hero.jpg (foto de la compañía) la reemplaza. -->
+  <div class="hero" id="hero">
+    <div class="px" id="px" aria-hidden="true"><div class="px-g" id="pxg"></div></div>
+    <div class="container">
+      <nav>
+        <img class="logo logo-claro" src="logo-claro.png" alt="Pixel Graphic">
+        <img class="logo logo-oscuro" src="logo-oscuro.png" alt="Pixel Graphic">
+        <div class="links">
+          <a class="l" href="#noticias">Noticias</a>
+          <a class="l" href="#calendario">Calendario</a>
+          <a class="l" href="#herramientas">Herramientas</a>
+        </div>
+        <div class="right">
+          <button class="theme" id="theme" aria-label="Cambiar tema">
+            <svg class="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4" y1="12" x2="2" y2="12"/><line x1="22" y1="12" x2="20" y2="12"/><line x1="5.6" y1="5.6" x2="4.2" y2="4.2"/><line x1="19.8" y1="19.8" x2="18.4" y2="18.4"/><line x1="5.6" y1="18.4" x2="4.2" y2="19.8"/><line x1="19.8" y1="4.2" x2="18.4" y2="5.6"/></svg>
+            <svg class="moon" viewBox="0 0 24 24"><path d="M20 14.5a8 8 0 1 1-9.5-9.5 6.5 6.5 0 0 0 9.5 9.5z"/></svg>
+          </button>
+        </div>
+      </nav>
+    </div>
+    <div class="container hero-text">
+      <p class="eyebrow">Intranet Pixel</p>
+      <h1>¡Bienvenido, Pixeludo!</h1>
+      <p>Mantente al día con las noticias de la compañía, los próximos eventos y todas las herramientas que necesitas en tu día.</p>
+    </div>
+  </div>
+
+  <div class="container quick">
+    <div class="bar">
+      <a href="https://pixelgraphicsas.github.io/crm-pixel/" target="_blank" rel="noopener"><svg><use href="#i-users"/></svg>CRM Pixel</a>
+      <a href="https://sistema-solicitudes-pixel.vercel.app/" target="_blank" rel="noopener"><svg><use href="#i-file"/></svg>Sistema de Solicitudes</a>
+      <a href="https://pixelgraphicsas.github.io/drive-copiador/" target="_blank" rel="noopener"><svg><use href="#i-search"/></svg>Buscador de Archivos</a>
+      <a href="https://pixel-tercerizacion.vercel.app/solicitudes" target="_blank" rel="noopener"><svg><use href="#i-briefcase"/></svg>Tercerización</a>
+      <a href="https://pixelgraphicsas.github.io/mensajeria-pixel/" target="_blank" rel="noopener"><svg><use href="#i-chat"/></svg>Mensajería</a>
+    </div>
+  </div>
+
+  <section class="blk container" id="noticias">
+    <div class="two">
+      <div>
+        <p class="eyebrow">Compañía</p>
+        <h2 class="t">Noticias y actualizaciones</h2>
+        <div class="chips" id="chips"></div>
+        <div class="news" id="news"></div>
+      </div>
+      <div id="calendario">
+        <p class="eyebrow">Agenda</p>
+        <h2 class="t">Calendario</h2>
+        <div class="box cal">
+          <div class="cal-h"><button id="prev" aria-label="Mes anterior">‹</button><span id="mes"></span><button id="next" aria-label="Mes siguiente">›</button></div>
+          <div class="cal-g" id="calg"></div>
+          <div class="evs" id="evs"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="blk container" id="herramientas">
+    <div class="tools-h"><p class="eyebrow">Accesos</p><h2 class="t">Nuestras herramientas</h2></div>
+    <div class="tabs chips" id="tabs" style="justify-content:center">
+      <button class="chip on" data-cat="todas">Todas</button>
+      <button class="chip" data-cat="dir">Dirección y Administración</button>
+      <button class="chip" data-cat="prod">Producción</button>
+    </div>
+    <input id="q" type="search" placeholder="Buscar herramienta…" autocomplete="off">
+    <div class="grid">
+      <a class="card" data-cat="dir" href="https://pixelgraphicsas.github.io/tc-monitor/" target="_blank" rel="noopener"><span class="ico"><svg><use href="#i-card"/></svg></span>Sistema de Seguimiento de Tarjetas de Crédito</a>
+      <a class="card" data-cat="dir" href="https://pixelgraphicsas.github.io/crm-pixel/" target="_blank" rel="noopener"><span class="ico"><svg><use href="#i-users"/></svg></span>CRM Pixel</a>
+      <a class="card" data-cat="dir" href="https://pixel-tercerizacion.vercel.app/solicitudes" target="_blank" rel="noopener"><span class="ico"><svg><use href="#i-briefcase"/></svg></span>Sistema de Tercerización</a>
+      <a class="card" data-cat="dir" href="https://docs.google.com/spreadsheets/d/1hTZuAtWAzeSqo7Lef1WTplJt-ssFg0QL-KaqZUbQADY/edit?gid=1128677851#gid=1128677851" target="_blank" rel="noopener"><span class="ico"><svg><use href="#i-ops"/></svg></span>OP Producción</a>
+      <a class="card" data-cat="dir" href="https://docs.google.com/spreadsheets/d/1IFafW5ZDw9b_IYjNQ_rLZgn9FP5UZSrjuClQMM27W60/edit?gid=1632966025#gid=1632966025" target="_blank" rel="noopener"><span class="ico"><svg><use href="#i-gear"/></svg></span>OP Engine</a>
+      <a class="card" data-cat="dir" href="https://script.google.com/a/macros/pixel-g.com/s/AKfycbwr1iK1R6qJbfwOA5h3_MDbumr8pPJdNWloyFZYsXu01rDktAUZy-_tsr5IWV9dMMewsA/exec" target="_blank" rel="noopener"><span class="ico"><svg><use href="#i-book"/></svg></span>OP Manuales</a>
+      <a class="card" data-cat="prod" href="https://pixelgraphicsas.github.io/drive-copiador/" target="_blank" rel="noopener"><span class="ico"><svg><use href="#i-search"/></svg></span>Buscador de Archivos Digital</a>
+      <a class="card" data-cat="prod" href="https://pixelgraphicsas.github.io/catalogo-extractor/" target="_blank" rel="noopener"><span class="ico"><svg><use href="#i-code"/></svg></span>Extractor de Códigos para Diseño</a>
+      <a class="card" data-cat="prod" href="https://pixelgraphicsas.github.io/mensajeria-pixel/" target="_blank" rel="noopener"><span class="ico"><svg><use href="#i-chat"/></svg></span>Mensajería Pixeluda</a>
+      <a class="card" data-cat="prod" href="https://docs.google.com/spreadsheets/d/19zKnfL_o0G-A12u42ARh7HF__ypJki0xZyjqPufXNJ4/edit?gid=130603725#gid=130603725" target="_blank" rel="noopener"><span class="ico"><svg><use href="#i-camera"/></svg></span>Muestras Fotografía</a>
+      <a class="card" data-cat="prod" href="https://sistema-solicitudes-pixel.vercel.app/" target="_blank" rel="noopener"><span class="ico"><svg><use href="#i-file"/></svg></span>Sistema de Solicitudes</a>
+      <a class="card" data-cat="prod" href="https://sss-solicitudes-sistemas-pixel.vercel.app/direccion" target="_blank" rel="noopener"><span class="ico"><svg><use href="#i-activity"/></svg></span>SSS - Seguimiento de Sistemas</a>
+      <a class="card" data-cat="prod" href="https://sss-solicitudes-sistemas-pixel.vercel.app/direccion" target="_blank" rel="noopener"><span class="ico"><svg><use href="#i-zap"/></svg></span>PIXEL ONE</a>
+    </div>
+    <p id="vacio" class="hidden">No hay herramientas que coincidan.</p>
+  </section>
+</main>
+
+<footer><img src="pata.png" alt="Pixel Graphic — El único ecosistema integral de la región, experto en catálogos"></footer>
+
+<script>
+  /* ===== CONTENIDO EDITABLE =====
+     NOTICIAS: { cat, titulo, texto, fecha: "AAAA-MM-DD", img }   (img opcional)
+     EVENTOS:  { fecha: "AAAA-MM-DD", titulo }                                 */
+  const NOTICIAS = [
+    { cat: "Anuncios",  titulo: "Bienvenidos a la nueva Intranet Pixel", texto: "Aquí encontrarás todas nuestras herramientas en un solo lugar.", fecha: "2026-11-12", img: "" },
+    { cat: "Novedades", titulo: "Próximamente: noticias de la compañía", texto: "Este espacio se actualizará con las novedades de Pixel.", fecha: "2026-11-12", img: "" }
+  ];
+  const EVENTOS = [];
+
+  const norm = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const fmt = d => new Date(d + 'T00:00:00').toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  /* Tema claro/oscuro (design system §8) */
+  document.getElementById('theme').onclick = () => {
+    const d = document.documentElement.classList.toggle('dark');
+    try { localStorage.setItem('theme', d ? 'dark' : 'light'); } catch (e) {}
+  };
+
+  /* Fondo de píxeles (réplica de PixelBackground: 46×28, PRNG mulberry32) */
+  (function () {
+    const COL = ['#223050', '#D18259', '#9B6B4F', '#E2B584'];
+    let t = 42; const rnd = () => { t |= 0; t = (t + 0x6d2b79f5) | 0; let r = Math.imul(t ^ (t >>> 15), 1 | t);
+      r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r; return ((r ^ (r >>> 14)) >>> 0) / 4294967296; };
+    let h = '';
+    for (let i = 0; i < 46 * 28; i++)
+      h += `<div class="pc" style="background:${COL[i % 4]};--dur:${(2.5 + rnd() * 3.5).toFixed(2)}s;--delay:${(-rnd() * 6).toFixed(2)}s;--max:${(0.22 + rnd() * 0.4).toFixed(3)}"></div>`;
+    document.getElementById('pxg').innerHTML = h;
+    /* Si hay foto de la compañía (hero.jpg), reemplaza los píxeles */
+    const im = new Image();
+    im.onload = () => { const hero = document.getElementById('hero'); hero.style.backgroundImage = 'url(hero.jpg)'; hero.classList.add('foto'); document.getElementById('px').remove(); };
+    im.src = 'hero.jpg';
+  })();
+
+  /* Noticias */
+  const cats = ['Todas', ...new Set(NOTICIAS.map(n => n.cat))];
+  const chips = document.getElementById('chips'), news = document.getElementById('news');
+  function pintaNoticias(cat) {
+    chips.innerHTML = cats.map(c => `<button class="chip ${c === cat ? 'on' : ''}" data-c="${esc(c)}">${esc(c)}</button>`).join('');
+    news.innerHTML = NOTICIAS.filter(n => cat === 'Todas' || n.cat === cat).map(n => `
+      <article class="box nw">
+        <div class="img">${n.img ? `<img src="${esc(n.img)}" alt="">` : `<img class="ph" src="icon.png" alt="">`}</div>
+        <div class="b"><p class="eyebrow">${esc(n.cat)}</p><h3>${esc(n.titulo)}</h3><p>${esc(n.texto)}</p><div class="d">${fmt(n.fecha)}</div></div>
+      </article>`).join('');
+  }
+  chips.addEventListener('click', e => { const b = e.target.closest('.chip'); if (b) pintaNoticias(b.dataset.c); });
+  pintaNoticias('Todas');
+
+  /* Calendario */
+  let ref = new Date(); ref.setDate(1);
+  const hoy = new Date(), key = (y, m, d) => `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  function pintaCal() {
+    const y = ref.getFullYear(), m = ref.getMonth();
+    document.getElementById('mes').textContent = ref.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
+    const primero = (new Date(y, m, 1).getDay() + 6) % 7, dias = new Date(y, m + 1, 0).getDate();
+    const conEv = new Set(EVENTOS.map(e => e.fecha));
+    let h = ['L','M','M','J','V','S','D'].map(d => `<div class="dn">${d}</div>`).join('') + '<div></div>'.repeat(primero);
+    for (let d = 1; d <= dias; d++) {
+      const esHoy = d === hoy.getDate() && m === hoy.getMonth() && y === hoy.getFullYear();
+      h += `<div class="dy${esHoy ? ' today' : ''}${conEv.has(key(y, m, d)) ? ' ev' : ''}">${d}</div>`;
+    }
+    document.getElementById('calg').innerHTML = h;
+    const pre = key(y, m, 1).slice(0, 7);
+    const lista = EVENTOS.filter(e => e.fecha.startsWith(pre)).sort((a, b) => a.fecha.localeCompare(b.fecha));
+    document.getElementById('evs').innerHTML = lista.length
+      ? lista.map(e => `<div class="ev-i"><b>${+e.fecha.slice(8)}<small>${new Date(e.fecha + 'T00:00:00').toLocaleDateString('es-CO', { month: 'short' })}</small></b>${esc(e.titulo)}</div>`).join('')
+      : '<div class="ev-none">Sin eventos este mes</div>';
+  }
+  document.getElementById('prev').onclick = () => { ref.setMonth(ref.getMonth() - 1); pintaCal(); };
+  document.getElementById('next').onclick = () => { ref.setMonth(ref.getMonth() + 1); pintaCal(); };
+  pintaCal();
+
+  /* Herramientas: filtros + buscador */
+  const cards = [...document.querySelectorAll('a.card')], vacio = document.getElementById('vacio'), q = document.getElementById('q');
+  let catAct = 'todas';
+  function filtra() {
+    const t = norm(q.value.trim());
+    cards.forEach(c => c.classList.toggle('hidden', !((catAct === 'todas' || c.dataset.cat === catAct) && (!t || norm(c.textContent).includes(t)))));
+    vacio.classList.toggle('hidden', cards.some(c => !c.classList.contains('hidden')));
+  }
+  document.getElementById('tabs').addEventListener('click', e => {
+    const b = e.target.closest('.chip'); if (!b) return;
+    document.querySelectorAll('#tabs .chip').forEach(x => x.classList.toggle('on', x === b));
+    catAct = b.dataset.cat; filtra();
+  });
+  q.addEventListener('input', filtra);
+</script>
+</body>
+</html>
