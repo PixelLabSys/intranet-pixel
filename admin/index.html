@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="es" class="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Backoffice Pixel</title>
+<link rel="icon" href="../icon.png">
+<script>try { if (localStorage.getItem('theme') === 'light') document.documentElement.classList.remove('dark'); } catch (e) {}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap">
+<style>
+  :root { --bg:#fff; --surface:#f7f5f2; --hover:#f3f0ec; --fg:#223050; --border:#e7e2dc; --muted:#6e6560; --subtle:#8a8177; --terracota:#D18259; --danger:#b3382c; --ok:#2f7d4f; --font:"Inter",Arial,sans-serif; }
+  .dark { --bg:#10161f; --surface:#171f2b; --hover:#212b3a; --fg:#ede8e1; --border:#2b3542; --muted:#b8b2a8; --subtle:#8b8579; --danger:#e06a5c; --ok:#5fbf86; }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; background:var(--bg); color:var(--fg); font-family:var(--font); font-size:14px; -webkit-font-smoothing:antialiased; }
+  .logo { height:20px; display:block; } .logo-claro { display:none; } .dark .logo-claro { display:block; } .dark .logo-oscuro { display:none; }
+  .eyebrow { font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:var(--subtle); margin:0 0 4px; }
+  h1 { font-size:22px; font-weight:500; margin:0 0 18px; letter-spacing:-.01em; } h2 { font-size:16px; font-weight:500; margin:0 0 12px; }
+  .center { min-height:100vh; display:grid; place-items:center; padding:24px; }
+  .card { width:100%; max-width:400px; padding:28px; border:1px solid var(--border); border-radius:12px; background:var(--bg); }
+  .card .logo { margin-bottom:22px; }
+  label { display:block; font-size:12px; color:var(--muted); margin:12px 0 4px; }
+  input[type=text], input[type=email], input[type=password], input[type=url], select, textarea { width:100%; padding:9px 11px; font:inherit; color:var(--fg); background:var(--surface); border:1px solid var(--border); border-radius:8px; }
+  textarea { min-height:84px; resize:vertical; }
+  input:focus, select:focus, textarea:focus { outline:1px solid var(--fg); }
+  button.b { font:inherit; font-weight:500; padding:9px 14px; border-radius:8px; border:1px solid var(--border); background:transparent; color:var(--fg); cursor:pointer; }
+  button.b:hover { background:var(--hover); } button.b:disabled { opacity:.5; cursor:default; }
+  button.pri { background:var(--fg); color:var(--bg); border-color:var(--fg); } button.pri:hover { opacity:.88; background:var(--fg); }
+  button.dng { color:var(--danger); }
+  .full { width:100%; margin-top:18px; } .link { background:none; border:0; color:var(--muted); cursor:pointer; font:inherit; text-decoration:underline; padding:0; margin-top:14px; }
+  .msg { margin-top:14px; font-size:13px; padding:9px 11px; border-radius:8px; border:1px solid var(--border); background:var(--surface); }
+  .msg.err { color:var(--danger); border-color:var(--danger); } .msg.ok { color:var(--ok); border-color:var(--ok); }
+  .qr { display:block; margin:12px auto; width:180px; height:180px; background:#fff; padding:6px; border-radius:8px; }
+  code { font-size:12px; word-break:break-all; background:var(--surface); padding:2px 5px; border-radius:4px; }
+
+  .shell { display:grid; grid-template-columns:210px 1fr; min-height:100vh; }
+  aside { border-right:1px solid var(--border); padding:20px 14px; display:flex; flex-direction:column; gap:4px; background:var(--surface); }
+  aside .logo { margin:0 6px 20px; }
+  aside button.tab { display:flex; align-items:center; gap:10px; width:100%; padding:9px 10px; font:inherit; font-weight:500; text-align:left; color:var(--muted); background:none; border:0; border-radius:8px; cursor:pointer; }
+  aside button.tab:hover { background:var(--hover); color:var(--fg); } aside button.tab.on { background:var(--fg); color:var(--bg); }
+  aside .foot { margin-top:auto; font-size:12px; color:var(--subtle); display:grid; gap:8px; word-break:break-all; }
+  main { padding:28px 32px 64px; max-width:860px; width:100%; }
+  .box { border:1px solid var(--border); border-radius:12px; padding:20px; margin-bottom:18px; background:var(--bg); }
+  .row { display:flex; align-items:center; gap:10px; padding:10px 0; border-top:1px solid var(--border); } .row:first-child { border-top:0; }
+  .row .grow { flex:1; min-width:0; } .row .sub { font-size:12px; color:var(--subtle); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .row.child { padding-left:28px; }
+  .ib { display:grid; place-items:center; width:30px; height:30px; background:none; color:var(--muted); border:1px solid var(--border); border-radius:8px; cursor:pointer; }
+  .ib:hover { background:var(--hover); color:var(--fg); } .ib:disabled { opacity:.35; cursor:default; }
+  .tag { font-size:10px; padding:2px 7px; border:1px solid var(--border); border-radius:999px; color:var(--subtle); }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; } .actions { display:flex; gap:8px; margin-top:16px; flex-wrap:wrap; }
+  .preview { width:100%; max-width:360px; aspect-ratio:16/7; background:var(--surface) center/cover; border:1px solid var(--border); border-radius:8px; display:grid; place-items:center; color:var(--subtle); font-size:12px; }
+  .soon { color:var(--subtle); padding:40px 0; text-align:center; }
+  @media (max-width:760px) { .shell { grid-template-columns:1fr; } aside { flex-direction:row; flex-wrap:wrap; border-right:0; border-bottom:1px solid var(--border); padding:12px; } aside .logo { width:100%; margin:0 0 8px; }
+    aside .foot { margin:0; width:100%; flex-direction:row; align-items:center; } main { padding:20px 16px 48px; } .grid2 { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="../assets/config.js"></script>
+<script src="../assets/common.js"></script>
+<script src="../assets/supabase-js-2.117.3.min.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>

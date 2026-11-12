@@ -1,0 +1,383 @@
+/* Backoffice Pixel — Corte 1: acceso (contraseña + MFA), Banner, Menús, Administradores.
+   Todo el contenido dinámico se pinta con createElement/textContent (PX.h). La seguridad real vive en las políticas RLS. */
+(function () {
+  'use strict';
+  var h = PX.h, CFG = window.PX_CONFIG, app = document.getElementById('app');
+  var BANNER_KEYS = ['banner_eyebrow', 'banner_title', 'banner_text'];
+  var INACTIVITY_MS = 30 * 60 * 1000;
+
+  // Un enlace de invitación o recuperación llega con #...type=invite|recovery: hay que pedir contraseña nueva.
+  var needPassword = /[#&]type=(invite|recovery)\b/.test(location.hash);
+
+  if (!CFG || !CFG.url || !CFG.anonKey) { app.append(center(card(h('p', null, 'El backoffice aún no está conectado a un proyecto Supabase.')))); return; }
+  var sb = supabase.createClient(CFG.url, CFG.anonKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+
+  /* ---------------- utilidades de interfaz ---------------- */
+  function center(c) { return h('div', { class: 'center' }, c); }
+  function card() { var c = h('div', { class: 'card' }, logos()); [].slice.call(arguments).forEach(function (x) { c.append(x); }); return c; }
+  function logos() { var d = document.createElement('div'); d.append(h('img', { class: 'logo logo-claro', src: '../logo-claro.png', alt: 'Pixel Graphic' }), h('img', { class: 'logo logo-oscuro', src: '../logo-oscuro.png', alt: 'Pixel Graphic' })); return d; }
+  function msg(kind, text) { return h('div', { class: 'msg ' + (kind || '') , role: kind === 'err' ? 'alert' : 'status' }, text); }
+  function field(label, input) { return h('div', null, h('label', null, label), input); }
+  function setMsg(box, kind, text) { box.textContent = ''; if (text) box.append(msg(kind, text)); }
+  function show(node) { app.textContent = ''; app.append(node); }
+  function friendly(e) { var m = (e && e.message) || ''; if (/Invalid login/i.test(m)) return 'Correo o contraseña incorrectos.'; if (/rate|too many/i.test(m)) return 'Demasiados intentos. Espera un momento.'; return m || 'Ocurrió un error. Intenta de nuevo.'; }
+  function busy(btn, on) { btn.disabled = on; }
+
+  /* ---------------- flujo de acceso ---------------- */
+  async function start() {
+    var s = (await sb.auth.getSession()).data.session;
+    if (!s) return viewLogin();
+    if (needPassword) return viewSetPassword();
+    var aal = (await sb.auth.mfa.getAuthenticatorAssuranceLevel()).data;
+    if (aal && aal.currentLevel === 'aal1' && aal.nextLevel === 'aal2') return viewMfaVerify();
+    if (aal && aal.currentLevel === 'aal1') return viewMfaEnroll();
+    var uid = s.user.id;
+    var adm = await sb.from('admins').select('user_id').eq('user_id', uid).maybeSingle();
+    if (!adm.data) return viewNoAdmin();
+    viewShell(s.user);
+  }
+
+  function viewLogin() {
+    var email = h('input', { type: 'email', autocomplete: 'username', required: true }), pw = h('input', { type: 'password', autocomplete: 'current-password', required: true });
+    var out = h('div'), btn = h('button', { class: 'b pri full', type: 'submit' }, 'Entrar');
+    var forgot = h('button', { class: 'link', type: 'button' }, 'Olvidé mi contraseña');
+    forgot.onclick = async function () {
+      if (!email.value) return setMsg(out, 'err', 'Escribe tu correo arriba y vuelve a pulsar.');
+      await sb.auth.resetPasswordForEmail(email.value.trim(), { redirectTo: location.origin + location.pathname });
+      setMsg(out, 'ok', 'Si el correo es de un administrador, recibirás un enlace para crear una contraseña nueva.'); // misma respuesta exista o no
+    };
+    var f = h('form', null, h('h1', null, 'Backoffice'), field('Correo', email), field('Contraseña', pw), btn, out, forgot);
+    f.onsubmit = async function (e) {
+      e.preventDefault(); busy(btn, true);
+      var r = await sb.auth.signInWithPassword({ email: email.value.trim(), password: pw.value });
+      busy(btn, false);
+      if (r.error) return setMsg(out, 'err', friendly(r.error));
+      start();
+    };
+    show(center(card(f)));
+  }
+
+  function viewSetPassword() {
+    var p1 = h('input', { type: 'password', autocomplete: 'new-password', minlength: 12, required: true }), p2 = h('input', { type: 'password', autocomplete: 'new-password', required: true });
+    var out = h('div'), btn = h('button', { class: 'b pri full', type: 'submit' }, 'Guardar contraseña');
+    var f = h('form', null, h('h1', null, 'Crea tu contraseña'), h('p', { class: 'eyebrow' }, 'Mínimo 12 caracteres'), field('Contraseña nueva', p1), field('Repítela', p2), btn, out);
+    f.onsubmit = async function (e) {
+      e.preventDefault();
+      if (p1.value.length < 12) return setMsg(out, 'err', 'Usa al menos 12 caracteres.');
+      if (p1.value !== p2.value) return setMsg(out, 'err', 'Las contraseñas no coinciden.');
+      busy(btn, true);
+      var r = await sb.auth.updateUser({ password: p1.value });
+      busy(btn, false);
+      if (r.error) return setMsg(out, 'err', friendly(r.error));
+      needPassword = false; history.replaceState(null, '', location.pathname); start();
+    };
+    show(center(card(f)));
+  }
+
+  async function viewMfaEnroll() {
+    // Limpia factores sin verificar de intentos previos para poder inscribir uno nuevo.
+    var lf = await sb.auth.mfa.listFactors();
+    var stale = ((lf.data && lf.data.all) || []).filter(function (x) { return x.factor_type === 'totp' && x.status === 'unverified'; });
+    for (var i = 0; i < stale.length; i++) await sb.auth.mfa.unenroll({ factorId: stale[i].id });
+    var en = await sb.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'Backoffice' });
+    if (en.error) return show(center(card(msg('err', friendly(en.error)))));
+    var factorId = en.data.id, out = h('div');
+    var code = h('input', { type: 'text', inputmode: 'numeric', autocomplete: 'one-time-code', maxlength: 6, pattern: '[0-9]{6}', required: true });
+    var btn = h('button', { class: 'b pri full', type: 'submit' }, 'Activar');
+    var img = h('img', { class: 'qr', alt: 'Código QR para tu app de autenticación', src: en.data.totp.qr_code });
+    var f = h('form', null, h('h1', null, 'Activa la verificación en dos pasos'),
+      h('p', null, 'Escanea este código con Google Authenticator, Authy o similar, y escribe los 6 dígitos que te muestre.'), img,
+      h('p', { class: 'eyebrow' }, 'Si no puedes escanear, clave manual:'), h('code', null, en.data.totp.secret), field('Código de 6 dígitos', code), btn, out);
+    f.onsubmit = async function (e) {
+      e.preventDefault(); busy(btn, true);
+      var r = await sb.auth.mfa.challengeAndVerify({ factorId: factorId, code: code.value.trim() });
+      busy(btn, false);
+      if (r.error) return setMsg(out, 'err', 'Código incorrecto. Revisa la hora de tu teléfono e inténtalo otra vez.');
+      start();
+    };
+    show(center(card(f)));
+  }
+
+  async function viewMfaVerify() {
+    var lf = await sb.auth.mfa.listFactors();
+    var fac = lf.data && lf.data.totp && lf.data.totp[0];
+    if (!fac) return viewMfaEnroll();
+    var code = h('input', { type: 'text', inputmode: 'numeric', autocomplete: 'one-time-code', maxlength: 6, pattern: '[0-9]{6}', required: true });
+    var out = h('div'), btn = h('button', { class: 'b pri full', type: 'submit' }, 'Verificar');
+    var out2 = h('button', { class: 'link', type: 'button' }, 'Cancelar y salir'); out2.onclick = logout;
+    var f = h('form', null, h('h1', null, 'Verificación en dos pasos'), field('Código de tu app de autenticación', code), btn, out, out2);
+    f.onsubmit = async function (e) {
+      e.preventDefault(); busy(btn, true);
+      var r = await sb.auth.mfa.challengeAndVerify({ factorId: fac.id, code: code.value.trim() });
+      busy(btn, false);
+      if (r.error) return setMsg(out, 'err', 'Código incorrecto o vencido.');
+      start();
+    };
+    show(center(card(f)));
+    code.focus();
+  }
+
+  function viewNoAdmin() {
+    var b = h('button', { class: 'b full', type: 'button' }, 'Salir'); b.onclick = logout;
+    show(center(card(h('h1', null, 'Sin acceso'), h('p', null, 'Esta cuenta no es administradora del backoffice. Pídele acceso a un administrador.'), b)));
+  }
+
+  async function logout() { await sb.auth.signOut(); location.hash = ''; viewLogin(); }
+
+  /* ---------------- cierre por inactividad ---------------- */
+  var idleTimer;
+  function armIdle() {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(function () { logout(); }, INACTIVITY_MS);
+  }
+  ['click', 'keydown', 'pointerdown', 'touchstart'].forEach(function (ev) { document.addEventListener(ev, function () { if (idleTimer) armIdle(); }, { passive: true }); });
+
+  /* ---------------- shell ---------------- */
+  var current = 'banner';
+  function viewShell(user) {
+    armIdle();
+    var main = h('main'), tabs = [
+      ['banner', 'Banner', 'image'], ['menus', 'Menús', 'menu'], ['noticias', 'Noticias', 'megaphone'],
+      ['calendario', 'Calendario', 'calendar'], ['herramientas', 'Herramientas', 'gear'], ['admins', 'Administradores', 'shield']
+    ], btns = {};
+    var aside = h('aside', null, logos());
+    tabs.forEach(function (t) {
+      var b = h('button', { class: 'tab', type: 'button' }, PX.svgIcon(t[2], 16), t[1]); btns[t[0]] = b;
+      b.onclick = function () { go(t[0]); }; aside.append(b);
+    });
+    var out = h('button', { class: 'b', type: 'button' }, 'Cerrar sesión'); out.onclick = logout;
+    var theme = h('button', { class: 'b', type: 'button' }, 'Cambiar tema');
+    theme.onclick = function () { var d = document.documentElement.classList.toggle('dark'); try { localStorage.setItem('theme', d ? 'dark' : 'light'); } catch (e) {} };
+    aside.append(h('div', { class: 'foot' }, h('span', null, user.email), theme, out));
+    function go(k) {
+      current = k; Object.keys(btns).forEach(function (x) { btns[x].classList.toggle('on', x === k); });
+      main.textContent = '';
+      ({ banner: modBanner, menus: modMenus, admins: modAdmins })[k] ? ({ banner: modBanner, menus: modMenus, admins: modAdmins })[k](main, user) : modSoon(main, k);
+    }
+    show(h('div', { class: 'shell' }, aside, main));
+    go(current);
+  }
+  function modSoon(root, k) { root.append(h('h1', null, 'Próximamente'), h('p', { class: 'soon' }, 'Este módulo se activa en un corte posterior, cuando valides el actual.')); }
+
+  /* ---------------- Banner ---------------- */
+  function resizeImage(file, maxW) {
+    // Re-codifica en JPEG: reduce peso y elimina metadatos EXIF (p. ej. ubicación).
+    return new Promise(function (res, rej) {
+      var url = URL.createObjectURL(file), im = new Image();
+      im.onload = function () {
+        var sc = Math.min(1, maxW / im.width), c = document.createElement('canvas');
+        c.width = Math.round(im.width * sc); c.height = Math.round(im.height * sc);
+        var ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height); ctx.drawImage(im, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        c.toBlob(function (b) { b ? res(b) : rej(new Error('No se pudo procesar la imagen')); }, 'image/jpeg', 0.85);
+      };
+      im.onerror = function () { URL.revokeObjectURL(url); rej(new Error('El archivo no es una imagen válida (usa JPG, PNG o WebP).')); };
+      im.src = url;
+    });
+  }
+
+  async function modBanner(root) {
+    root.append(h('p', { class: 'eyebrow' }, 'Portada'), h('h1', null, 'Banner'));
+    var r = await sb.from('site_settings').select('key,value,updated_at');
+    if (r.error) return root.append(msg('err', 'No se pudo cargar: ' + friendly(r.error)));
+    var cur = {}; r.data.forEach(function (x) { cur[x.key] = x; });
+    var out = h('div'), imgPath = (cur.banner_image && cur.banner_image.value) || '';
+    var prev = h('div', { class: 'preview' }, 'Sin imagen (se muestra el fondo de píxeles)');
+    function paint() {
+      var u = PX.mediaUrl(CFG, imgPath); prev.textContent = '';
+      if (u) { prev.style.backgroundImage = 'url("' + u + '")'; } else { prev.style.backgroundImage = ''; prev.textContent = 'Sin imagen (se muestra el fondo de píxeles)'; }
+    }
+    paint();
+    var file = h('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp' });
+    var rm = h('button', { class: 'b dng', type: 'button' }, 'Quitar imagen');
+    var inputs = {};
+    inputs.banner_eyebrow = h('input', { type: 'text', maxlength: 60, value: (cur.banner_eyebrow && cur.banner_eyebrow.value) || '' });
+    inputs.banner_title = h('input', { type: 'text', maxlength: 100, value: (cur.banner_title && cur.banner_title.value) || '' });
+    inputs.banner_text = h('textarea', { maxlength: 300 }); inputs.banner_text.value = (cur.banner_text && cur.banner_text.value) || '';
+    var save = h('button', { class: 'b pri', type: 'button' }, 'Guardar textos');
+
+    async function setImage(newPath) {
+      var old = imgPath, row = cur.banner_image;
+      var q = row
+        ? sb.from('site_settings').update({ value: newPath }).eq('key', 'banner_image').eq('updated_at', row.updated_at).select('key,value,updated_at')
+        : sb.from('site_settings').insert({ key: 'banner_image', value: newPath }).select('key,value,updated_at');
+      var u = await q;
+      if (u.error) throw u.error;
+      if (!u.data.length) throw new Error('Otra persona modificó el banner. Recarga la página y vuelve a intentarlo.');
+      cur.banner_image = u.data[0]; imgPath = newPath; paint();
+      if (old && old !== newPath) await sb.storage.from('media').remove([old]); // no deja archivos huérfanos
+    }
+    file.onchange = async function () {
+      var f = file.files[0]; if (!f) return;
+      setMsg(out, '', 'Procesando imagen…');
+      try {
+        var blob = await resizeImage(f, 1920), name = crypto.randomUUID() + '.jpg';
+        var up = await sb.storage.from('media').upload(name, blob, { contentType: 'image/jpeg', upsert: false });
+        if (up.error) throw up.error;
+        try { await setImage(name); } catch (e) { await sb.storage.from('media').remove([name]); throw e; }
+        setMsg(out, 'ok', 'Imagen actualizada. Ya se ve en la intranet.');
+      } catch (e) { setMsg(out, 'err', friendly(e)); }
+      file.value = '';
+    };
+    rm.onclick = async function () {
+      if (!imgPath) return;
+      if (!confirm('¿Quitar la imagen del banner? Volverá el fondo de píxeles.')) return;
+      try { await setImage(''); setMsg(out, 'ok', 'Imagen quitada.'); } catch (e) { setMsg(out, 'err', friendly(e)); }
+    };
+    save.onclick = async function () {
+      busy(save, true);
+      try {
+        for (var i = 0; i < BANNER_KEYS.length; i++) {
+          var k = BANNER_KEYS[i], v = inputs[k].value.trim(), row = cur[k];
+          if (row && row.value === v) continue;
+          var q = row
+            ? sb.from('site_settings').update({ value: v }).eq('key', k).eq('updated_at', row.updated_at).select('key,value,updated_at')
+            : sb.from('site_settings').insert({ key: k, value: v }).select('key,value,updated_at');
+          var u = await q;
+          if (u.error) throw u.error;
+          if (!u.data.length) throw new Error('Otra persona modificó el banner. Recarga la página y vuelve a intentarlo.');
+          cur[k] = u.data[0];
+        }
+        setMsg(out, 'ok', 'Textos guardados.');
+      } catch (e) { setMsg(out, 'err', friendly(e)); }
+      busy(save, false);
+    };
+    root.append(
+      h('div', { class: 'box' }, h('h2', null, 'Imagen'), prev, h('p', { class: 'eyebrow', style: 'margin-top:10px' }, 'JPG, PNG o WebP · se ajusta a 1920 px de ancho'), h('div', { class: 'actions' }, file, rm)),
+      h('div', { class: 'box' }, h('h2', null, 'Textos'), field('Línea superior (pequeña)', inputs.banner_eyebrow), field('Título', inputs.banner_title), field('Texto', inputs.banner_text), h('div', { class: 'actions' }, save)),
+      out);
+  }
+
+  /* ---------------- Menús ---------------- */
+  var ZONES = { top: 'Menú superior (junto al logo)', quick: 'Accesos rápidos (barra bajo el banner)' };
+  async function modMenus(root) {
+    root.append(h('p', { class: 'eyebrow' }, 'Navegación'), h('h1', null, 'Menús'));
+    var holder = h('div'), out = h('div'); root.append(holder, out);
+    async function load() {
+      var m = await sb.from('menu_items').select('*').order('position'), t = await sb.from('tools').select('id,name').order('name');
+      if (m.error || t.error) return setMsg(out, 'err', 'No se pudo cargar: ' + friendly(m.error || t.error));
+      draw(m.data, t.data);
+    }
+    function sibs(all, it) { return all.filter(function (x) { return x.zone === it.zone && (x.parent_id || null) === (it.parent_id || null); }).sort(function (a, b) { return a.position - b.position; }); }
+    async function swap(all, it, dir) {
+      var s = sibs(all, it), i = s.findIndex(function (x) { return x.id === it.id; }), o = s[i + dir]; if (!o) return;
+      // Reasigna posiciones 0..n-1 con el intercambio aplicado, para que nunca haya empates.
+      s[i] = o; s[i + dir] = it;
+      for (var k = 0; k < s.length; k++) { if (s[k].position !== k) { var r = await sb.from('menu_items').update({ position: k }).eq('id', s[k].id); if (r.error) return setMsg(out, 'err', friendly(r.error)); } }
+      load();
+    }
+    function draw(all, tools) {
+      holder.textContent = '';
+      Object.keys(ZONES).forEach(function (zone) {
+        var box = h('div', { class: 'box' }, h('h2', null, ZONES[zone]));
+        var roots = all.filter(function (x) { return x.zone === zone && !x.parent_id; }).sort(function (a, b) { return a.position - b.position; });
+        function row(it, child) {
+          var s = sibs(all, it), i = s.findIndex(function (x) { return x.id === it.id; });
+          var up = h('button', { class: 'ib', type: 'button', 'aria-label': 'Subir', disabled: i === 0 }, PX.svgIcon('up', 14)), dn = h('button', { class: 'ib', type: 'button', 'aria-label': 'Bajar', disabled: i === s.length - 1 }, PX.svgIcon('down', 14));
+          up.onclick = function () { swap(all, it, -1); }; dn.onclick = function () { swap(all, it, 1); };
+          var ed = h('button', { class: 'ib', type: 'button', 'aria-label': 'Editar' }, PX.svgIcon('edit', 14)); ed.onclick = function () { form(all, tools, it, zone, null); };
+          var vis = h('button', { class: 'b', type: 'button' }, it.visible ? 'Visible' : 'Oculto');
+          vis.onclick = async function () { var r = await sb.from('menu_items').update({ visible: !it.visible }).eq('id', it.id).eq('updated_at', it.updated_at).select('id'); if (r.error) return setMsg(out, 'err', friendly(r.error)); if (!r.data.length) setMsg(out, 'err', 'Cambió mientras lo editabas. Se recargó la lista.'); load(); };
+          var del = h('button', { class: 'ib', type: 'button', 'aria-label': 'Eliminar' }, PX.svgIcon('trash', 14));
+          del.onclick = async function () {
+            var kids = all.filter(function (x) { return x.parent_id === it.id; }).length;
+            if (!confirm('¿Eliminar "' + it.label + '"' + (kids ? ' y sus ' + kids + ' submenús' : '') + '?')) return;
+            var r = await sb.from('menu_items').delete().eq('id', it.id); if (r.error) return setMsg(out, 'err', friendly(r.error)); load();
+          };
+          var detail = it.kind === 'tool' ? 'Herramienta: ' + ((tools.filter(function (t) { return t.id === it.tool_id; })[0] || {}).name || '—') : (it.target || '');
+          var parts = [h('div', { class: 'grow' }, h('div', null, it.label), h('div', { class: 'sub' }, detail)), h('span', { class: 'tag' }, it.kind), up, dn, ed, vis, del];
+          var r = h('div', { class: 'row' + (child ? ' child' : '') }); parts.forEach(function (p) { r.append(p); }); return r;
+        }
+        if (!roots.length) box.append(h('p', { class: 'eyebrow' }, 'Sin elementos'));
+        roots.forEach(function (it) {
+          box.append(row(it, false));
+          all.filter(function (x) { return x.parent_id === it.id; }).sort(function (a, b) { return a.position - b.position; }).forEach(function (k) { box.append(row(k, true)); });
+        });
+        var add = h('button', { class: 'b', type: 'button' }, '+ Agregar elemento'); add.onclick = function () { form(all, tools, null, zone, box); };
+        box.append(h('div', { class: 'actions' }, add));
+        holder.append(box);
+      });
+    }
+    function form(all, tools, it, zone, box) {
+      var isNew = !it, d = it || { zone: zone, kind: 'url', label: '', target: '', icon: '', visible: true, parent_id: null };
+      var label = h('input', { type: 'text', maxlength: 60, value: d.label });
+      var kind = h('select', null, h('option', { value: 'url' }, 'Enlace externo'), h('option', { value: 'anchor' }, 'Sección de esta página'), h('option', { value: 'tool' }, 'Herramienta'));
+      kind.value = d.kind;
+      var url = h('input', { type: 'url', placeholder: 'https://… o mailto:…', value: d.kind === 'url' ? (d.target || '') : '' });
+      var anchor = h('select', null, h('option', { value: '#noticias' }, 'Noticias'), h('option', { value: '#calendario' }, 'Calendario'), h('option', { value: '#herramientas' }, 'Herramientas')); if (d.kind === 'anchor') anchor.value = d.target;
+      var tool = h('select'); tools.forEach(function (t) { tool.append(h('option', { value: t.id }, t.name)); }); if (d.tool_id) tool.value = d.tool_id;
+      var icon = h('select', null, h('option', { value: '' }, 'Sin ícono')); PX.ICON_KEYS.forEach(function (k) { icon.append(h('option', { value: k }, PX.ICON_LABELS[k] || k)); }); icon.value = d.icon || '';
+      var parent = h('select', null, h('option', { value: '' }, 'Ninguno (nivel principal)'));
+      if (d.zone === 'top') all.filter(function (x) { return x.zone === 'top' && !x.parent_id && x.id !== d.id; }).forEach(function (x) { parent.append(h('option', { value: x.id }, x.label)); });
+      parent.value = d.parent_id || '';
+      var hasKids = !isNew && all.some(function (x) { return x.parent_id === d.id; });
+      var out2 = h('div'), fUrl = field('Dirección', url), fAnchor = field('Sección', anchor), fTool = field('Herramienta', tool);
+      function sync() { fUrl.style.display = kind.value === 'url' ? '' : 'none'; fAnchor.style.display = kind.value === 'anchor' ? '' : 'none'; fTool.style.display = kind.value === 'tool' ? '' : 'none'; }
+      kind.onchange = sync; sync();
+      var save = h('button', { class: 'b pri', type: 'button' }, 'Guardar'), cancel = h('button', { class: 'b', type: 'button' }, 'Cancelar'); cancel.onclick = load;
+      save.onclick = async function () {
+        var rec = { label: label.value.trim(), kind: kind.value, icon: icon.value || null, parent_id: parent.value || null };
+        if (!rec.label) return setMsg(out2, 'err', 'Escribe el nombre.');
+        if (rec.kind === 'url') { var u = PX.safeUrl(url.value.trim()); if (!u) return setMsg(out2, 'err', 'La dirección debe empezar por https:// o mailto:'); rec.target = url.value.trim(); rec.tool_id = null; }
+        else if (rec.kind === 'anchor') { rec.target = anchor.value; rec.tool_id = null; }
+        else { if (!tool.value) return setMsg(out2, 'err', 'Elige una herramienta.'); rec.tool_id = tool.value; rec.target = null; }
+        if (hasKids && rec.parent_id) return setMsg(out2, 'err', 'Este elemento tiene submenús: no puede ser a su vez un submenú.');
+        busy(save, true); var r;
+        if (isNew) {
+          rec.zone = d.zone; rec.position = all.filter(function (x) { return x.zone === d.zone && (x.parent_id || null) === rec.parent_id; }).length;
+          r = await sb.from('menu_items').insert(rec).select('id');
+        } else {
+          if ((d.parent_id || null) !== rec.parent_id) rec.position = all.filter(function (x) { return x.zone === d.zone && (x.parent_id || null) === rec.parent_id; }).length;
+          r = await sb.from('menu_items').update(rec).eq('id', d.id).eq('updated_at', d.updated_at).select('id');
+          if (!r.error && !r.data.length) { busy(save, false); setMsg(out2, 'err', 'Otra persona modificó este elemento. Se recargará la lista.'); return setTimeout(load, 1200); }
+        }
+        busy(save, false);
+        if (r.error) return setMsg(out2, 'err', friendly(r.error));
+        load();
+      };
+      var wrap = h('div', { class: 'box' }, h('h2', null, isNew ? 'Nuevo elemento — ' + ZONES[d.zone] : 'Editar elemento'), field('Nombre', label), h('div', { class: 'grid2' }, field('Tipo', kind), field('Ícono', icon)), fUrl, fAnchor, fTool);
+      if (d.zone === 'top') wrap.append(field('Dentro de (submenú de)', parent));
+      wrap.append(h('div', { class: 'actions' }, save, cancel), out2);
+      holder.textContent = ''; holder.append(wrap);
+    }
+    load();
+  }
+
+  /* ---------------- Administradores ---------------- */
+  async function modAdmins(root, me) {
+    root.append(h('p', { class: 'eyebrow' }, 'Acceso'), h('h1', null, 'Administradores'));
+    var list = h('div', { class: 'box' }), out = h('div');
+    var email = h('input', { type: 'email', placeholder: 'correo@pixelgraphic.co' }), inv = h('button', { class: 'b pri', type: 'button' }, 'Enviar invitación');
+    inv.onclick = async function () {
+      var v = email.value.trim(); if (!v) return;
+      busy(inv, true);
+      var r = await sb.functions.invoke('invite_admin', { body: { email: v } });
+      busy(inv, false);
+      if (r.error) { var m = 'No se pudo enviar la invitación.'; try { var j = await r.error.context.json(); if (j && j.error) m = j.error; } catch (e) {} return setMsg(out, 'err', m); }
+      email.value = ''; setMsg(out, 'ok', 'Invitación enviada a ' + v + '. Debe abrir el enlace, crear su contraseña y activar la verificación en dos pasos.'); load();
+    };
+    root.append(h('div', { class: 'box' }, h('h2', null, 'Invitar a alguien'), field('Correo', email), h('div', { class: 'actions' }, inv)), list, out);
+    async function load() {
+      var r = await sb.from('admins').select('user_id,email,created_at').order('created_at');
+      list.textContent = ''; list.append(h('h2', null, 'Administradores actuales'));
+      if (r.error) return list.append(msg('err', friendly(r.error)));
+      r.data.forEach(function (a) {
+        var row = h('div', { class: 'row' }, h('div', { class: 'grow' }, h('div', null, a.email), h('div', { class: 'sub' }, new Date(a.created_at).toLocaleDateString('es-CO'))));
+        if (a.user_id === me.id) row.append(h('span', { class: 'tag' }, 'Tú'));
+        else {
+          var del = h('button', { class: 'b dng', type: 'button' }, 'Quitar acceso');
+          del.onclick = async function () {
+            if (!confirm('¿Quitar el acceso de ' + a.email + '? Ya no podrá entrar al backoffice.')) return;
+            var d = await sb.rpc('remove_admin', { p_user: a.user_id }); if (d.error) return setMsg(out, 'err', friendly(d.error)); load();
+          };
+          row.append(del);
+        }
+        list.append(row);
+      });
+    }
+    load();
+  }
+
+  sb.auth.onAuthStateChange(function (ev) { if (ev === 'SIGNED_OUT') { clearTimeout(idleTimer); idleTimer = null; } });
+  start();
+})();
