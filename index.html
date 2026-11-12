@@ -344,7 +344,7 @@
       var img = PX.mediaUrl(CFG, n.image_path);
       box.appendChild(h('article', { class: 'box nw' },
         h('div', { class: 'img' }, img ? h('img', { src: img, alt: '' }) : h('img', { class: 'ph', src: 'icon.png', alt: '' })),
-        h('div', { class: 'b' }, h('p', { class: 'eyebrow' }, n.category), h('h3', null, n.title), h('p', null, n.body), h('div', { class: 'd' }, fmtDate(n.published_on)))));
+        h('div', { class: 'b' }, h('p', { class: 'eyebrow' }, n.category), h('h3', null, PX.rich(n.title)), h('p', null, PX.rich(n.body)), h('div', { class: 'd' }, fmtDate(n.published_on)))));
     });
   }
 

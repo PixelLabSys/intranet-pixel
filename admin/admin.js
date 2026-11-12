@@ -152,12 +152,44 @@
     function go(k) {
       current = k; Object.keys(btns).forEach(function (x) { btns[x].classList.toggle('on', x === k); });
       main.textContent = '';
-      ({ banner: modBanner, menus: modMenus, admins: modAdmins })[k] ? ({ banner: modBanner, menus: modMenus, admins: modAdmins })[k](main, user) : modSoon(main, k);
+      var mods = { banner: modBanner, menus: modMenus, noticias: modNews, admins: modAdmins };
+      mods[k] ? mods[k](main, user) : modSoon(main, k);
     }
     show(h('div', { class: 'shell' }, aside, main));
     go(current);
   }
   function modSoon(root, k) { root.append(h('h1', null, 'Próximamente'), h('p', { class: 'soon' }, 'Este módulo se activa en un corte posterior, cuando valides el actual.')); }
+
+  /* Campo de texto con barra de peso y color + vista previa (compartido por Banner y Noticias). */
+  function weightField(label, input) {
+    var prev = h('div', { class: 'rp' });
+    function upd() { prev.textContent = ''; prev.appendChild(PX.rich(input.value)); if (!input.value) prev.textContent = 'Vista previa'; }
+    // Aplica a la selección: quita solo las marcas del mismo tipo (peso o color) y pone la nueva.
+    function apply(which, open, close) {
+      var a = input.selectionStart, b = input.selectionEnd; if (a === b) { return; }
+      var sel = PX.stripRich(input.value.slice(a, b), which);
+      var rep = open ? open + sel + close : sel;
+      input.value = input.value.slice(0, a) + rep + input.value.slice(b);
+      input.focus(); input.setSelectionRange(a, a + rep.length); upd();
+    }
+    var bar = h('div', { class: 'tb' }), bar2 = h('div', { class: 'tb' });
+    [['l', 'Ligero'], ['n', 'Normal'], ['b', 'Negrita']].forEach(function (x) {
+      var bt = h('button', { class: 'b', type: 'button', style: 'font-weight:' + ({ l: 300, n: 400, b: 700 })[x[0]] }, x[1]);
+      bt.onmousedown = function (e) { e.preventDefault(); };
+      bt.onclick = function () { x[0] === 'n' ? apply('w') : apply('w', '[' + x[0] + ']', '[/' + x[0] + ']'); }; bar.append(bt);
+    });
+    bar.append(h('span', { class: 'hint' }, 'Selecciona texto y elige peso o color'));
+    bar2.append(h('span', { class: 'hint' }, 'Color:'));
+    var auto = h('button', { class: 'sw auto', type: 'button', title: 'Color automático', 'aria-label': 'Color automático' });
+    auto.onmousedown = function (e) { e.preventDefault(); }; auto.onclick = function () { apply('c'); }; bar2.append(auto);
+    Object.keys(PX.COLORS).forEach(function (k) {
+      var sw = h('button', { class: 'sw', type: 'button', title: PX.COLOR_LABELS[k], 'aria-label': PX.COLOR_LABELS[k], style: 'background:' + PX.COLORS[k] });
+      sw.onmousedown = function (e) { e.preventDefault(); };
+      sw.onclick = function () { apply('c', '[c:' + k + ']', '[/c]'); }; bar2.append(sw);
+    });
+    input.addEventListener('input', upd); upd();
+    return h('div', null, h('label', null, label), bar, bar2, input, prev);
+  }
 
   /* ---------------- Banner ---------------- */
   function resizeImage(file, maxW) {
@@ -196,35 +228,6 @@
     inputs.banner_text = h('textarea', { maxlength: 500 }); inputs.banner_text.value = (cur.banner_text && cur.banner_text.value) || '';
     var save = h('button', { class: 'b pri', type: 'button' }, 'Guardar textos');
     // Barra de pesos: aplica Ligero / Normal / Negrita al texto seleccionado (guarda marcas [l] [b]).
-    function weightField(label, input) {
-      var prev = h('div', { class: 'rp' });
-      function upd() { prev.textContent = ''; prev.appendChild(PX.rich(input.value)); if (!input.value) prev.textContent = 'Vista previa'; }
-      // Aplica a la selección: quita solo las marcas del mismo tipo (peso o color) y pone la nueva.
-      function apply(which, open, close) {
-        var a = input.selectionStart, b = input.selectionEnd; if (a === b) { return; }
-        var sel = PX.stripRich(input.value.slice(a, b), which);
-        var rep = open ? open + sel + close : sel;
-        input.value = input.value.slice(0, a) + rep + input.value.slice(b);
-        input.focus(); input.setSelectionRange(a, a + rep.length); upd();
-      }
-      var bar = h('div', { class: 'tb' }), bar2 = h('div', { class: 'tb' });
-      [['l', 'Ligero'], ['n', 'Normal'], ['b', 'Negrita']].forEach(function (x) {
-        var bt = h('button', { class: 'b', type: 'button', style: 'font-weight:' + ({ l: 300, n: 400, b: 700 })[x[0]] }, x[1]);
-        bt.onmousedown = function (e) { e.preventDefault(); };
-        bt.onclick = function () { x[0] === 'n' ? apply('w') : apply('w', '[' + x[0] + ']', '[/' + x[0] + ']'); }; bar.append(bt);
-      });
-      bar.append(h('span', { class: 'hint' }, 'Selecciona texto y elige peso o color'));
-      bar2.append(h('span', { class: 'hint' }, 'Color:'));
-      var auto = h('button', { class: 'sw auto', type: 'button', title: 'Color automático', 'aria-label': 'Color automático' });
-      auto.onmousedown = function (e) { e.preventDefault(); }; auto.onclick = function () { apply('c'); }; bar2.append(auto);
-      Object.keys(PX.COLORS).forEach(function (k) {
-        var sw = h('button', { class: 'sw', type: 'button', title: PX.COLOR_LABELS[k], 'aria-label': PX.COLOR_LABELS[k], style: 'background:' + PX.COLORS[k] });
-        sw.onmousedown = function (e) { e.preventDefault(); };
-        sw.onclick = function () { apply('c', '[c:' + k + ']', '[/c]'); }; bar2.append(sw);
-      });
-      input.addEventListener('input', upd); upd();
-      return h('div', null, h('label', null, label), bar, bar2, input, prev);
-    }
     async function setImage(newPath) {
       var old = imgPath, row = cur.banner_image;
       var q = row
@@ -368,6 +371,112 @@
       if (d.zone === 'top') wrap.append(field('Dentro de (submenú de)', parent));
       wrap.append(h('div', { class: 'actions' }, save, cancel), out2);
       holder.textContent = ''; holder.append(wrap);
+    }
+    load();
+  }
+
+
+  /* ---------------- Noticias ---------------- */
+  async function modNews(root) {
+    root.append(h('p', { class: 'eyebrow' }, 'Compañía'), h('h1', null, 'Noticias'));
+    var featBox = h('div', { class: 'box' }), listBox = h('div', { class: 'box' }), formBox = h('div'), out = h('div');
+    root.append(featBox, formBox, listBox, out);
+    var all = [];
+    var fmt = function (d) { return new Date(d + 'T00:00:00').toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' }); };
+    async function load() {
+      var r = await sb.from('news').select('*').order('published_on', { ascending: false }).order('updated_at', { ascending: false });
+      if (r.error) return setMsg(out, 'err', 'No se pudo cargar: ' + friendly(r.error));
+      all = r.data; drawFeatured(); drawList();
+    }
+    function drawFeatured() {
+      featBox.textContent = ''; featBox.append(h('h2', null, 'Destacadas en la intranet'), h('p', { class: 'eyebrow' }, 'La intranet muestra solo estas 2 noticias. Deben estar publicadas.'));
+      [1, 2].forEach(function (slot) {
+        var cur = all.filter(function (n) { return n.featured_order === slot; })[0];
+        var sel = h('select', null, h('option', { value: '' }, '— Sin noticia —'));
+        all.filter(function (n) { return n.status === 'published'; }).forEach(function (n) { sel.append(h('option', { value: n.id }, PX.stripRich(n.title))); });
+        sel.value = cur ? cur.id : '';
+        sel.onchange = async function () {
+          var r;
+          if (sel.value) r = await sb.rpc('set_featured', { p_id: sel.value, p_slot: slot });
+          else if (cur) r = await sb.rpc('unset_featured', { p_id: cur.id });
+          if (r && r.error) setMsg(out, 'err', friendly(r.error)); else setMsg(out, 'ok', 'Destacadas actualizadas.');
+          // Si la misma noticia estaba en el otro cupo, el servidor la reubica: recargar muestra el estado real.
+          load();
+        };
+        featBox.append(field('Cupo ' + slot, sel));
+      });
+    }
+    function drawList() {
+      listBox.textContent = ''; listBox.append(h('h2', null, 'Todas las noticias'));
+      var add = h('button', { class: 'b', type: 'button' }, '+ Nueva noticia'); add.onclick = function () { form(null); };
+      if (!all.length) listBox.append(h('p', { class: 'eyebrow' }, 'Aún no hay noticias'));
+      all.forEach(function (n) {
+        var ed = h('button', { class: 'ib', type: 'button', 'aria-label': 'Editar' }, PX.svgIcon('edit', 14)); ed.onclick = function () { form(n); };
+        var del = h('button', { class: 'ib', type: 'button', 'aria-label': 'Eliminar' }, PX.svgIcon('trash', 14));
+        del.onclick = async function () {
+          if (!confirm('¿Eliminar "' + PX.stripRich(n.title) + '"? No se puede deshacer.')) return;
+          var r = await sb.from('news').delete().eq('id', n.id); if (r.error) return setMsg(out, 'err', friendly(r.error));
+          if (n.image_path) await sb.storage.from('media').remove([n.image_path]);
+          load();
+        };
+        var row = h('div', { class: 'row' }, h('div', { class: 'grow' }, h('div', null, PX.stripRich(n.title)), h('div', { class: 'sub' }, n.category + ' · ' + fmt(n.published_on))));
+        if (n.featured_order) row.append(h('span', { class: 'tag' }, 'Destacada ' + n.featured_order));
+        row.append(h('span', { class: 'tag' }, n.status === 'published' ? 'Publicada' : 'Borrador'), ed, del);
+        listBox.append(row);
+      });
+      listBox.append(h('div', { class: 'actions' }, add));
+    }
+    function form(n) {
+      var isNew = !n, d = n || { title: '', body: '', category: 'General', image_path: null, status: 'draft', published_on: new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }) };
+      var title = h('input', { type: 'text', maxlength: 140, value: d.title });
+      var body = h('textarea', { maxlength: 1200 }); body.value = d.body;
+      var cat = h('input', { type: 'text', maxlength: 40, list: 'cats', value: d.category });
+      var dl = h('datalist', { id: 'cats' }); ['Anuncios', 'Novedades', 'Eventos', 'General'].forEach(function (c) { dl.append(h('option', { value: c })); });
+      var date = h('input', { type: 'date', value: d.published_on });
+      var st = h('select', null, h('option', { value: 'draft' }, 'Borrador (no visible)'), h('option', { value: 'published' }, 'Publicada')); st.value = d.status;
+      var imgPath = d.image_path || '', uploaded = [];
+      var prev = h('div', { class: 'preview' });
+      function paint() { var u = PX.mediaUrl(CFG, imgPath); prev.textContent = ''; prev.style.backgroundImage = u ? 'url("' + u + '")' : ''; if (!u) prev.textContent = 'Sin imagen'; }
+      paint();
+      var file = h('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp' }), rm = h('button', { class: 'b dng', type: 'button' }, 'Quitar imagen');
+      var out2 = h('div');
+      file.onchange = async function () {
+        var f = file.files[0]; if (!f) return; setMsg(out2, '', 'Procesando imagen…');
+        try {
+          var blob = await resizeImage(f, 1280), name = crypto.randomUUID() + '.jpg';
+          var up = await sb.storage.from('media').upload(name, blob, { contentType: 'image/jpeg', upsert: false });
+          if (up.error) throw up.error;
+          uploaded.push(name); imgPath = name; paint(); setMsg(out2, 'ok', 'Imagen lista. Guarda la noticia para aplicarla.');
+        } catch (e) { setMsg(out2, 'err', friendly(e)); }
+        file.value = '';
+      };
+      rm.onclick = function () { imgPath = ''; paint(); };
+      var save = h('button', { class: 'b pri', type: 'button' }, 'Guardar'), cancel = h('button', { class: 'b', type: 'button' }, 'Cancelar');
+      async function cleanup(keep) { var junk = uploaded.filter(function (x) { return x !== keep; }); if (junk.length) await sb.storage.from('media').remove(junk); }
+      cancel.onclick = async function () { await cleanup(null); formBox.textContent = ''; };
+      save.onclick = async function () {
+        var rec = { title: title.value.trim(), body: body.value.trim(), category: cat.value.trim() || 'General', published_on: date.value, status: st.value, image_path: imgPath || null };
+        if (!PX.stripRich(rec.title)) return setMsg(out2, 'err', 'Escribe el título.');
+        if (!rec.published_on) return setMsg(out2, 'err', 'Elige la fecha.');
+        busy(save, true); var r;
+        if (isNew) r = await sb.from('news').insert(rec).select('id');
+        else {
+          r = await sb.from('news').update(rec).eq('id', d.id).eq('updated_at', d.updated_at).select('id');
+          if (!r.error && !r.data.length) { busy(save, false); return setMsg(out2, 'err', 'Otra persona modificó esta noticia. Cierra y vuelve a abrirla.'); }
+        }
+        busy(save, false);
+        if (r.error) return setMsg(out2, 'err', friendly(r.error));
+        await cleanup(rec.image_path);
+        if (d.image_path && d.image_path !== rec.image_path) await sb.storage.from('media').remove([d.image_path]);
+        formBox.textContent = ''; setMsg(out, 'ok', 'Noticia guardada.'); load();
+      };
+      formBox.textContent = '';
+      formBox.append(h('div', { class: 'box' }, h('h2', null, isNew ? 'Nueva noticia' : 'Editar noticia'),
+        weightField('Título', title), weightField('Texto', body),
+        h('div', { class: 'grid2' }, field('Categoría', cat), field('Fecha', date)), dl, field('Estado', st),
+        h('label', null, 'Imagen'), prev, h('div', { class: 'actions' }, file, rm),
+        h('div', { class: 'actions' }, save, cancel), out2));
+      formBox.firstChild.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
     load();
   }
