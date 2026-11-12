@@ -8,7 +8,7 @@ window.PX_RESPALDO = {
  },
  "menu": [
   {
-   "id": "b32eab33-70e4-46ab-8ae1-50ad62be5aae",
+   "id": "e43823aa-d02a-4407-a3d0-62ad30ed9903",
    "parent_id": null,
    "zone": "top",
    "label": "Noticias",
@@ -20,31 +20,31 @@ window.PX_RESPALDO = {
    "visible": true
   },
   {
-   "id": "aa151f30-5d29-421a-a95c-72d25b3b19c4",
+   "id": "6d38c5dd-e681-4f28-85a2-19f0b3eb52d6",
    "parent_id": null,
    "zone": "quick",
    "label": "CRM Pixel",
    "kind": "tool",
    "target": null,
-   "tool_id": "03d91ed4-5471-446b-8de4-11d37d0b34af",
+   "tool_id": "3ddfb21b-c373-4b3c-9059-21e75d848269",
    "icon": null,
    "position": 1,
    "visible": true
   },
   {
-   "id": "67b154b6-321d-4b90-9ce2-7cf567321cdc",
+   "id": "be11a490-5085-4ca9-8c82-836fb5715d44",
    "parent_id": null,
    "zone": "quick",
    "label": "Sistema de Solicitudes",
    "kind": "tool",
    "target": null,
-   "tool_id": "622e4e9c-1d9d-4425-a354-e739147342ce",
+   "tool_id": "cd4f140f-8e09-4e15-919d-d29171cdb8e0",
    "icon": null,
    "position": 2,
    "visible": true
   },
   {
-   "id": "b0fd0d7a-9ea9-48ea-9bda-310504fb7873",
+   "id": "13300e0d-04ca-4377-a7aa-5acc9fd8cddd",
    "parent_id": null,
    "zone": "top",
    "label": "Calendario",
@@ -56,19 +56,19 @@ window.PX_RESPALDO = {
    "visible": true
   },
   {
-   "id": "5d5d0440-dfdd-4e78-b7d8-192b02a9afa1",
+   "id": "d960123f-1a96-4f26-92c0-e8eef7c2901b",
    "parent_id": null,
    "zone": "quick",
    "label": "Buscador de Archivos Digital",
    "kind": "tool",
    "target": null,
-   "tool_id": "98af1617-ae29-4946-859d-10652264371e",
+   "tool_id": "f0917f85-de38-44f4-9705-ad28f0885fb1",
    "icon": null,
    "position": 3,
    "visible": true
   },
   {
-   "id": "479f013f-7afc-41e4-90c7-c7123e17ec85",
+   "id": "5933ee12-6a74-4495-a39a-6144b3adb971",
    "parent_id": null,
    "zone": "top",
    "label": "Herramientas",
@@ -80,25 +80,25 @@ window.PX_RESPALDO = {
    "visible": true
   },
   {
-   "id": "3f1d54be-410e-419f-9992-8f6c273b1d86",
+   "id": "ffa0fa33-4af7-4579-ab8e-8bab349f3392",
    "parent_id": null,
    "zone": "quick",
    "label": "Sistema de Tercerización",
    "kind": "tool",
    "target": null,
-   "tool_id": "340e29ac-7cfe-4fba-b89d-5d32fb60acb8",
+   "tool_id": "c2902254-f230-4c6e-9382-4c4c6f5db98e",
    "icon": null,
    "position": 4,
    "visible": true
   },
   {
-   "id": "9f1e0680-e260-4057-8b17-7f144fad979b",
+   "id": "26104a44-4965-4993-9fc4-292afd1df26b",
    "parent_id": null,
    "zone": "quick",
    "label": "Mensajería Pixeluda",
    "kind": "tool",
    "target": null,
-   "tool_id": "e1bff766-e378-481f-a1ed-79be504ef930",
+   "tool_id": "f291ce6a-4c61-4786-bfb3-7afab43e8ddd",
    "icon": null,
    "position": 5,
    "visible": true
@@ -120,7 +120,7 @@ window.PX_RESPALDO = {
  ],
  "tools": [
   {
-   "id": "a3106248-2dc3-4857-bd70-f5cc386adec8",
+   "id": "15da088a-e1d6-4f6c-b22b-1945566fb839",
    "category_id": "00000000-0000-4000-8000-000000000001",
    "name": "Sistema de Seguimiento de Tarjetas de Crédito",
    "icon": "card",
@@ -129,7 +129,7 @@ window.PX_RESPALDO = {
    "visible": true
   },
   {
-   "id": "98af1617-ae29-4946-859d-10652264371e",
+   "id": "f0917f85-de38-44f4-9705-ad28f0885fb1",
    "category_id": "00000000-0000-4000-8000-000000000002",
    "name": "Buscador de Archivos Digital",
    "icon": "search",
@@ -138,7 +138,7 @@ window.PX_RESPALDO = {
    "visible": true
   },
   {
-   "id": "03d91ed4-5471-446b-8de4-11d37d0b34af",
+   "id": "3ddfb21b-c373-4b3c-9059-21e75d848269",
    "category_id": "00000000-0000-4000-8000-000000000001",
    "name": "CRM Pixel",
    "icon": "users",
@@ -147,7 +147,7 @@ window.PX_RESPALDO = {
    "visible": true
   },
   {
-   "id": "cafebfce-54c7-4fa1-a06c-7415c0cafd76",
+   "id": "62ba68fb-633b-4ca2-8d24-4f4bc5db36df",
    "category_id": "00000000-0000-4000-8000-000000000002",
    "name": "Extractor de Códigos para Diseño",
    "icon": "code",
@@ -156,7 +156,7 @@ window.PX_RESPALDO = {
    "visible": true
   },
   {
-   "id": "340e29ac-7cfe-4fba-b89d-5d32fb60acb8",
+   "id": "c2902254-f230-4c6e-9382-4c4c6f5db98e",
    "category_id": "00000000-0000-4000-8000-000000000001",
    "name": "Sistema de Tercerización",
    "icon": "briefcase",
@@ -165,7 +165,7 @@ window.PX_RESPALDO = {
    "visible": true
   },
   {
-   "id": "e1bff766-e378-481f-a1ed-79be504ef930",
+   "id": "f291ce6a-4c61-4786-bfb3-7afab43e8ddd",
    "category_id": "00000000-0000-4000-8000-000000000002",
    "name": "Mensajería Pixeluda",
    "icon": "chat",
@@ -174,7 +174,7 @@ window.PX_RESPALDO = {
    "visible": true
   },
   {
-   "id": "7a7afe7e-9ba5-4b84-b135-51d17b873904",
+   "id": "50e01adf-8ac7-40f2-8cce-dce8b42347ab",
    "category_id": "00000000-0000-4000-8000-000000000001",
    "name": "OP Producción",
    "icon": "ops",
@@ -183,7 +183,7 @@ window.PX_RESPALDO = {
    "visible": true
   },
   {
-   "id": "ca611d69-bb4b-48be-977e-5d1187b79773",
+   "id": "8b5b5b36-fa8f-4122-9eb4-844da9a6c395",
    "category_id": "00000000-0000-4000-8000-000000000002",
    "name": "Muestras Fotografía",
    "icon": "camera",
@@ -192,7 +192,7 @@ window.PX_RESPALDO = {
    "visible": true
   },
   {
-   "id": "2ddb474e-cc9d-4a65-9dac-f81198551cd7",
+   "id": "8ced54bb-7190-4eb4-9b5c-2999e687bd0d",
    "category_id": "00000000-0000-4000-8000-000000000001",
    "name": "OP Engine",
    "icon": "gear",
@@ -201,7 +201,7 @@ window.PX_RESPALDO = {
    "visible": true
   },
   {
-   "id": "622e4e9c-1d9d-4425-a354-e739147342ce",
+   "id": "cd4f140f-8e09-4e15-919d-d29171cdb8e0",
    "category_id": "00000000-0000-4000-8000-000000000002",
    "name": "Sistema de Solicitudes",
    "icon": "file",
@@ -210,7 +210,7 @@ window.PX_RESPALDO = {
    "visible": true
   },
   {
-   "id": "f1d3c994-293d-4bb0-a8f5-13eb6dac7487",
+   "id": "c18bb2d4-fcc4-40cc-b316-f1116c568e44",
    "category_id": "00000000-0000-4000-8000-000000000001",
    "name": "OP Manuales",
    "icon": "book",
@@ -219,7 +219,7 @@ window.PX_RESPALDO = {
    "visible": true
   },
   {
-   "id": "76915d10-3e53-4ce1-ae28-3c02eec26f1e",
+   "id": "baafbe8c-2714-475d-ab75-540098ab638d",
    "category_id": "00000000-0000-4000-8000-000000000002",
    "name": "SSS - Seguimiento de Sistemas",
    "icon": "activity",
@@ -228,7 +228,7 @@ window.PX_RESPALDO = {
    "visible": true
   },
   {
-   "id": "d5d76e99-9dee-47ac-99e6-5423a41535b2",
+   "id": "fab411c6-0142-4c3c-bac0-579c83304d12",
    "category_id": "00000000-0000-4000-8000-000000000002",
    "name": "PIXEL ONE",
    "icon": "zap",
@@ -239,7 +239,7 @@ window.PX_RESPALDO = {
  ],
  "news": [
   {
-   "id": "c65f51d7-f0ef-40f4-a26d-fa28f25f6ad4",
+   "id": "a0fb65da-ef2b-4e7b-918f-3cbf19c43471",
    "title": "Bienvenidos a la nueva Intranet Pixel",
    "body": "Aquí encontrarás todas nuestras herramientas en un solo lugar.",
    "category": "Anuncios",
@@ -249,7 +249,7 @@ window.PX_RESPALDO = {
    "featured_order": 1
   },
   {
-   "id": "0b18f4c3-d8d8-4dcc-a624-c7f5507b149d",
+   "id": "af63c347-7ef9-4f3b-8140-efec3d7a2e58",
    "title": "Próximamente: noticias de la compañía",
    "body": "Este espacio se actualizará con las novedades de Pixel.",
    "category": "Novedades",
@@ -260,5 +260,5 @@ window.PX_RESPALDO = {
   }
  ],
  "events": [],
- "generatedAt": "2026-11-12T17:44:52.513Z"
+ "generatedAt": "2026-11-12T18:43:12.848Z"
 };

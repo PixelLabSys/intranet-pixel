@@ -8,7 +8,7 @@
         anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0'
       }
     : { // Producción: completar cuando exista el proyecto Supabase. Vacío = la intranet usa el respaldo.
-        url: '',
-        anonKey: ''
+        url: 'https://zifpfkivgdqdzlyulzwf.supabase.co',
+        anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InppZnBma2l2Z2RxZHpseXVsendmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ1MDgyNjEsImV4cCI6MjExMDA4NDI2MX0.-U2t9qXp3g--aRMc1_6f6ZkPdlvqThYZrgoMAD2QnsM'
       };
 })();
