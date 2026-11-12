@@ -118,6 +118,16 @@
   .cal-g .dy { padding: 8px 0; border-radius: 8px; position: relative; color: var(--muted); font-variant-numeric: tabular-nums; }
   .cal-g .dy:hover { background: var(--surface-hover); }
   .cal-g .dy.today { background: var(--fg); color: var(--bg); font-weight: 500; }
+  .cal-g .dy.has { cursor: pointer; padding: 4px 0 2px; font: inherit; font-size: 12px; background: none; border: 0; color: var(--fg); }
+  .cal-g .dy.has:hover, .cal-g .dy.has:focus-visible { background: var(--surface-hover); outline: none; }
+  .cal-g .dy.has.today { background: var(--fg); color: var(--bg); }
+  .cal-g .dy .mk { display: flex; justify-content: center; gap: 2px; height: 12px; color: var(--terracota); margin-top: 1px; }
+  .cal-g .dy.today .mk { color: var(--bg); }
+  #tip { position: fixed; z-index: 50; max-width: 240px; padding: 8px 10px; font-size: 12px; line-height: 1.4; color: var(--fg);
+    background: var(--bg); border: 1px solid var(--border); border-radius: 8px; pointer-events: none; }
+  #tip .tl { display: flex; align-items: center; gap: 6px; } #tip .tl + .tl { margin-top: 4px; } #tip svg { color: var(--terracota); }
+  .ev { display: flex; gap: 10px; align-items: flex-start; font-size: 12px; color: var(--muted); line-height: 1.4; }
+  .ev svg { color: var(--terracota); margin-top: 1px; } .ev b { color: var(--fg); font-weight: 500; } .ev .dd { font-family: var(--font-mono); color: var(--subtle); min-width: 38px; }
   .evs { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px; display: grid; gap: 8px; }
   .ev-none { font-size: 12px; color: var(--subtle); text-align: center; padding: 4px 0; }
 
@@ -199,6 +209,7 @@
           <div class="cal-h"><button id="prev" aria-label="Mes anterior">‹</button><span id="mes"></span><button id="next" aria-label="Mes siguiente">›</button></div>
           <div class="cal-g" id="calg"></div>
           <div class="evs" id="evs"></div>
+          <div id="tip" class="hidden" role="tooltip"></div>
         </div>
       </div>
     </div>
@@ -348,20 +359,64 @@
     });
   }
 
-  /* Calendario (los eventos y la torta de cumpleaños llegan en el Corte 3) */
+  /* Calendario: cumpleaños (se repiten cada año por mes/día) y eventos con fecha */
+  var ICON_EV = { cumple: 'cake', reunion: 'meeting', capacitacion: 'training', otro: 'star' };
   var ref = new Date(); ref.setDate(1);
   var todayBogota = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }).split('-').map(Number);
+  var events = [];
+  function eventsOf(y, m, d) { // m: 1-12
+    var leap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0, out = [];
+    events.forEach(function (e) {
+      if (e.type === 'cumple') {
+        var day = e.event_day, mon = e.event_month;
+        if (mon === 2 && day === 29 && !leap) day = 28; // los del 29 de febrero se celebran el 28 en años no bisiestos
+        if (mon === m && day === d) out.push(e);
+      } else if (e.event_date) {
+        var p = e.event_date.split('-').map(Number);
+        if (p[0] === y && p[1] === m && p[2] === d) out.push(e);
+      }
+    });
+    return out;
+  }
+  function evLabel(e) { return e.type === 'cumple' ? 'Cumpleaños de ' + e.person_name : e.title + (e.event_time ? ' · ' + e.event_time.slice(0, 5) : ''); }
+  var tip = null;
+  function showTip(el, list) {
+    var t = $('tip'); t.textContent = '';
+    list.forEach(function (e) { t.appendChild(h('div', { class: 'tl' }, PX.svgIcon(ICON_EV[e.type] || 'star', 14), evLabel(e))); });
+    t.classList.remove('hidden'); tip = el;
+    var r = el.getBoundingClientRect(), w = t.offsetWidth, x = Math.min(Math.max(8, r.left + r.width / 2 - w / 2), window.innerWidth - w - 8);
+    t.style.left = x + 'px'; t.style.top = (r.bottom + 6) + 'px';
+  }
+  function hideTip() { $('tip').classList.add('hidden'); tip = null; }
+  document.addEventListener('click', function (e) { if (tip && !tip.contains(e.target)) hideTip(); });
   function renderCal() {
+    hideTip();
     var y = ref.getFullYear(), m = ref.getMonth();
     $('mes').textContent = ref.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
     var first = (new Date(y, m, 1).getDay() + 6) % 7, days = new Date(y, m + 1, 0).getDate(), g = $('calg'); g.textContent = '';
     ['L', 'M', 'M', 'J', 'V', 'S', 'D'].forEach(function (d) { g.appendChild(h('div', { class: 'dn' }, d)); });
     for (var i = 0; i < first; i++) g.appendChild(h('div'));
+    var monthList = [];
     for (var d = 1; d <= days; d++) {
-      var isToday = d === todayBogota[2] && m + 1 === todayBogota[1] && y === todayBogota[0];
-      g.appendChild(h('div', { class: 'dy' + (isToday ? ' today' : '') }, d));
+      var isToday = d === todayBogota[2] && m + 1 === todayBogota[1] && y === todayBogota[0], list = eventsOf(y, m + 1, d), cls = 'dy' + (isToday ? ' today' : '');
+      if (!list.length) { g.appendChild(h('div', { class: cls }, d)); continue; }
+      var types = []; list.forEach(function (e) { if (types.indexOf(e.type) < 0) types.push(e.type); });
+      var mk = h('span', { class: 'mk' }); types.slice(0, 3).forEach(function (t) { mk.appendChild(PX.svgIcon(ICON_EV[t] || 'star', 11)); });
+      var btn = h('button', { class: cls + ' has', type: 'button', 'aria-label': d + ': ' + list.map(evLabel).join(', ') }, d, mk);
+      (function (b, l) {
+        b.addEventListener('mouseenter', function () { showTip(b, l); }); b.addEventListener('mouseleave', hideTip);
+        b.addEventListener('focus', function () { showTip(b, l); }); b.addEventListener('blur', hideTip);
+        b.addEventListener('click', function (ev) { ev.stopPropagation(); showTip(b, l); });
+      })(btn, list);
+      g.appendChild(btn);
+      list.forEach(function (e) { monthList.push({ d: d, e: e }); });
     }
-    $('evs').textContent = ''; $('evs').appendChild(h('div', { class: 'ev-none' }, 'Sin eventos este mes'));
+    var box = $('evs'); box.textContent = '';
+    if (!monthList.length) { box.appendChild(h('div', { class: 'ev-none' }, 'Sin eventos este mes')); return; }
+    monthList.forEach(function (x) {
+      box.appendChild(h('div', { class: 'ev' }, h('span', { class: 'dd' }, String(x.d).padStart(2, '0') + '/' + String(m + 1).padStart(2, '0')),
+        PX.svgIcon(ICON_EV[x.e.type] || 'star', 14), h('span', null, h('b', null, evLabel(x.e)), x.e.description ? h('span', null, ' — ' + x.e.description) : null)));
+    });
   }
   $('prev').onclick = function () { ref.setMonth(ref.getMonth() - 1); renderCal(); };
   $('next').onclick = function () { ref.setMonth(ref.getMonth() + 1); renderCal(); };
@@ -391,7 +446,7 @@
   }
 
   function renderAll(c, fromBackup) {
-    renderBanner(c); renderMenus(c); renderNews(c); renderCal(); renderTools(c);
+    events = c.events || []; renderBanner(c); renderMenus(c); renderNews(c); renderCal(); renderTools(c);
     $('aviso').textContent = fromBackup ? 'Mostrando contenido guardado (sin conexión con el servidor).' : '';
   }
 

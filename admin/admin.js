@@ -152,7 +152,7 @@
     function go(k) {
       current = k; Object.keys(btns).forEach(function (x) { btns[x].classList.toggle('on', x === k); });
       main.textContent = '';
-      var mods = { banner: modBanner, menus: modMenus, noticias: modNews, admins: modAdmins };
+      var mods = { banner: modBanner, menus: modMenus, noticias: modNews, calendario: modCalendar, admins: modAdmins };
       mods[k] ? mods[k](main, user) : modSoon(main, k);
     }
     show(h('div', { class: 'shell' }, aside, main));
@@ -476,6 +476,94 @@
         h('div', { class: 'grid2' }, field('Categoría', cat), field('Fecha', date)), dl, field('Estado', st),
         h('label', null, 'Imagen'), prev, h('div', { class: 'actions' }, file, rm),
         h('div', { class: 'actions' }, save, cancel), out2));
+      formBox.firstChild.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    load();
+  }
+
+
+  /* ---------------- Calendario ---------------- */
+  var MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+  var TIPOS = { cumple: 'Cumpleaños', reunion: 'Reunión', capacitacion: 'Capacitación', otro: 'Otro' };
+  var TIPO_ICON = { cumple: 'cake', reunion: 'meeting', capacitacion: 'training', otro: 'star' };
+  async function modCalendar(root) {
+    root.append(h('p', { class: 'eyebrow' }, 'Agenda'), h('h1', null, 'Calendario'));
+    var formBox = h('div'), evBox = h('div', { class: 'box' }), bdBox = h('div', { class: 'box' }), out = h('div'), all = [], q = '';
+    root.append(formBox, evBox, bdBox, out);
+    async function load() {
+      var r = await sb.from('events').select('*');
+      if (r.error) return setMsg(out, 'err', 'No se pudo cargar: ' + friendly(r.error));
+      all = r.data; draw();
+    }
+    function actions(e) {
+      var vis = h('button', { class: 'b', type: 'button' }, e.visible ? 'Visible' : 'Oculto');
+      vis.onclick = async function () { var r = await sb.from('events').update({ visible: !e.visible }).eq('id', e.id).eq('updated_at', e.updated_at).select('id'); if (r.error) setMsg(out, 'err', friendly(r.error)); else if (!r.data.length) setMsg(out, 'err', 'Cambió mientras lo editabas. Se recargó la lista.'); load(); };
+      var ed = h('button', { class: 'ib', type: 'button', 'aria-label': 'Editar' }, PX.svgIcon('edit', 14)); ed.onclick = function () { form(e); };
+      var del = h('button', { class: 'ib', type: 'button', 'aria-label': 'Eliminar' }, PX.svgIcon('trash', 14));
+      del.onclick = async function () { if (!confirm('¿Eliminar "' + (e.type === 'cumple' ? e.person_name : e.title) + '"?')) return; var r = await sb.from('events').delete().eq('id', e.id); if (r.error) return setMsg(out, 'err', friendly(r.error)); load(); };
+      return [vis, ed, del];
+    }
+    function draw() {
+      var evs = all.filter(function (e) { return e.type !== 'cumple'; }).sort(function (a, b) { return b.event_date < a.event_date ? -1 : 1; });
+      var bds = all.filter(function (e) { return e.type === 'cumple' && (!q || e.person_name.toLowerCase().indexOf(q) > -1); })
+        .sort(function (a, b) { return (a.event_month - b.event_month) || (a.event_day - b.event_day); });
+      evBox.textContent = ''; evBox.append(h('h2', null, 'Eventos (' + evs.length + ')'));
+      if (!evs.length) evBox.append(h('p', { class: 'eyebrow' }, 'Sin eventos'));
+      evs.forEach(function (e) {
+        var row = h('div', { class: 'row' }, PX.svgIcon(TIPO_ICON[e.type], 16), h('div', { class: 'grow' }, h('div', null, e.title), h('div', { class: 'sub' }, new Date(e.event_date + 'T00:00:00').toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' }) + (e.event_time ? ' · ' + e.event_time.slice(0, 5) : ''))), h('span', { class: 'tag' }, TIPOS[e.type]));
+        actions(e).forEach(function (x) { row.append(x); }); evBox.append(row);
+      });
+      var add = h('button', { class: 'b', type: 'button' }, '+ Nuevo evento'); add.onclick = function () { form(null, 'reunion'); };
+      evBox.append(h('div', { class: 'actions' }, add));
+      bdBox.textContent = ''; bdBox.append(h('h2', null, 'Cumpleaños (' + all.filter(function (e) { return e.type === 'cumple'; }).length + ')'),
+        h('p', { class: 'eyebrow' }, 'Se muestran cada año con la torta; solo se guarda día y mes. "Oculto" = la persona pidió no aparecer.'));
+      var s = h('input', { type: 'text', placeholder: 'Buscar por nombre…', value: q }); s.oninput = function () { q = s.value.trim().toLowerCase(); draw(); s2(); };
+      function s2() { var n = bdBox.querySelector('input'); if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); } }
+      bdBox.append(s);
+      bds.forEach(function (e) {
+        var row = h('div', { class: 'row' }, PX.svgIcon('cake', 16), h('div', { class: 'grow' }, h('div', null, e.person_name), h('div', { class: 'sub' }, e.event_day + ' de ' + MESES[e.event_month - 1])));
+        actions(e).forEach(function (x) { row.append(x); }); bdBox.append(row);
+      });
+      var addb = h('button', { class: 'b', type: 'button' }, '+ Nuevo cumpleaños'); addb.onclick = function () { form(null, 'cumple'); };
+      bdBox.append(h('div', { class: 'actions' }, addb));
+    }
+    function form(e, startType) {
+      var isNew = !e, d = e || { type: startType, title: '', person_name: '', event_month: 1, event_day: 1, event_date: new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }), event_time: null, description: '', visible: true };
+      var type = h('select'); Object.keys(TIPOS).forEach(function (k) { type.append(h('option', { value: k }, TIPOS[k])); }); type.value = d.type;
+      var name = h('input', { type: 'text', maxlength: 100, value: d.person_name || '' });
+      var month = h('select'); MESES.forEach(function (m, i) { month.append(h('option', { value: i + 1 }, m)); }); month.value = d.event_month || 1;
+      var day = h('input', { type: 'number', min: 1, max: 31, value: d.event_day || 1 });
+      var title = h('input', { type: 'text', maxlength: 120, value: d.type === 'cumple' ? '' : d.title });
+      var date = h('input', { type: 'date', value: d.event_date || '' });
+      var time = h('input', { type: 'time', value: d.event_time ? d.event_time.slice(0, 5) : '' });
+      var desc = h('textarea', { maxlength: 500 }); desc.value = d.description || '';
+      var vis = h('select', null, h('option', { value: '1' }, 'Visible en la intranet'), h('option', { value: '0' }, 'Oculto')); vis.value = d.visible ? '1' : '0';
+      var fb = h('div', null, field('Persona', name), h('div', { class: 'grid2' }, field('Mes', month), field('Día', day))), fe = h('div', null, field('Título', title), h('div', { class: 'grid2' }, field('Fecha', date), field('Hora (opcional)', time)));
+      function sync() { var c = type.value === 'cumple'; fb.style.display = c ? '' : 'none'; fe.style.display = c ? 'none' : ''; }
+      type.onchange = sync; sync();
+      var out2 = h('div'), save = h('button', { class: 'b pri', type: 'button' }, 'Guardar'), cancel = h('button', { class: 'b', type: 'button' }, 'Cancelar'); cancel.onclick = function () { formBox.textContent = ''; };
+      save.onclick = async function () {
+        var rec = { type: type.value, description: desc.value.trim(), visible: vis.value === '1' };
+        if (rec.type === 'cumple') {
+          var n = name.value.trim(), dd = parseInt(day.value, 10), mm = parseInt(month.value, 10);
+          if (!n) return setMsg(out2, 'err', 'Escribe el nombre de la persona.');
+          var max = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][mm - 1];
+          if (!(dd >= 1 && dd <= max)) return setMsg(out2, 'err', MESES[mm - 1] + ' tiene máximo ' + max + ' días.');
+          Object.assign(rec, { person_name: n, event_month: mm, event_day: dd, title: ('Cumpleaños de ' + n).slice(0, 120), event_date: null, event_time: null });
+        } else {
+          if (!title.value.trim()) return setMsg(out2, 'err', 'Escribe el título.');
+          if (!date.value) return setMsg(out2, 'err', 'Elige la fecha.');
+          Object.assign(rec, { title: title.value.trim(), event_date: date.value, event_time: time.value || null, person_name: null, event_month: null, event_day: null });
+        }
+        busy(save, true); var r;
+        if (isNew) r = await sb.from('events').insert(rec).select('id');
+        else { r = await sb.from('events').update(rec).eq('id', d.id).eq('updated_at', d.updated_at).select('id'); if (!r.error && !r.data.length) { busy(save, false); return setMsg(out2, 'err', 'Otra persona modificó este evento. Cierra y vuelve a abrirlo.'); } }
+        busy(save, false);
+        if (r.error) return setMsg(out2, 'err', friendly(r.error));
+        formBox.textContent = ''; setMsg(out, 'ok', 'Guardado.'); load();
+      };
+      formBox.textContent = '';
+      formBox.append(h('div', { class: 'box' }, h('h2', null, isNew ? 'Nuevo' : 'Editar'), field('Tipo', type), fb, fe, field('Descripción (opcional)', desc), field('Estado', vis), h('div', { class: 'actions' }, save, cancel), out2));
       formBox.firstChild.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
     load();
