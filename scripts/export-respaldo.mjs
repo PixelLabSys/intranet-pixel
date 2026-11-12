@@ -10,7 +10,7 @@ const content = {
   categories: await q('tool_categories?select=id,label,position,visible&order=position'),
   tools: await q('tools?select=id,category_id,name,icon,url,position,visible&order=position'),
   news: await q('news?select=id,title,body,category,image_path,published_on,status,featured_order&featured_order=not.is.null&order=featured_order'),
-  events: await q('events?select=id,title,type,person_name,event_month,event_day,event_date,event_time,description,visible'),
+  events: await q('events?select=id,title,type,person_name,event_month,event_day,event_date,event_time,description,visible,emoji'),
   generatedAt: new Date().toISOString(),
 };
 writeFileSync(new URL('../assets/respaldo.js', import.meta.url), '/* Generado por scripts/export-respaldo.mjs — no editar a mano */\nwindow.PX_RESPALDO = ' + JSON.stringify(content, null, 1) + ';\n');

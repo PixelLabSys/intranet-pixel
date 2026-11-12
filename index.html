@@ -121,7 +121,8 @@
   .cal-g .dy { padding: 8px 0; border-radius: 8px; position: relative; color: var(--muted); font-variant-numeric: tabular-nums; }
   .cal-g .dy:hover { background: var(--surface-hover); }
   .cal-g .dy.today { background: var(--fg); color: var(--bg); font-weight: 500; }
-  .cal-g .dy.has { cursor: pointer; padding: 4px 0 2px; font: inherit; font-size: 12px; background: none; border: 0; color: var(--fg); }
+  .cal-g .dy .emo { font-size: 16px; line-height: 1; }
+  .cal-g .dy.has { cursor: pointer; padding: 5px 0; font: inherit; font-size: 12px; background: none; border: 0; color: var(--fg); }
   .cal-g .dy.has:hover, .cal-g .dy.has:focus-visible { background: var(--surface-hover); outline: none; }
   .cal-g .dy.has.today { background: var(--fg); color: var(--bg); }
   .cal-g .dy .mk { display: flex; justify-content: center; gap: 2px; height: 12px; color: var(--terracota); margin-top: 1px; }
@@ -284,7 +285,7 @@
       sb.from('tool_categories').select('id,label,position').order('position'),
       sb.from('tools').select('id,category_id,name,icon,url,position').order('position'),
       sb.from('news').select('id,title,body,category,image_path,published_on,featured_order').not('featured_order', 'is', null).order('featured_order'),
-      sb.from('events').select('id,title,type,person_name,event_month,event_day,event_date,event_time,description')
+      sb.from('events').select('id,title,type,person_name,event_month,event_day,event_date,event_time,description,emoji')
     ]);
     for (var i = 0; i < r.length; i++) if (r[i].error) throw r[i].error;
     var settings = {}; r[0].data.forEach(function (x) { settings[x.key] = x.value; });
@@ -364,7 +365,8 @@
   }
 
   /* Calendario: cumpleaños (se repiten cada año por mes/día) y eventos con fecha */
-  var ICON_EV = { cumple: 'cake', reunion: 'meeting', capacitacion: 'training', otro: 'star' };
+  var EMO_DEF = { cumple: '🎂', reunion: '🤝', capacitacion: '🎓', otro: '⭐' };
+  function emo(e) { return e.emoji || EMO_DEF[e.type] || '⭐'; }
   var ref = new Date(); ref.setDate(1);
   var todayBogota = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }).split('-').map(Number);
   var events = [];
@@ -386,7 +388,7 @@
   var tip = null;
   function showTip(el, list) {
     var t = $('tip'); t.textContent = '';
-    list.forEach(function (e) { t.appendChild(h('div', { class: 'tl' }, PX.svgIcon(ICON_EV[e.type] || 'star', 14), evLabel(e))); });
+    list.forEach(function (e) { t.appendChild(h('div', { class: 'tl' }, h('span', null, emo(e)), evLabel(e))); });
     t.classList.remove('hidden'); tip = el;
     var r = el.getBoundingClientRect(), w = t.offsetWidth, x = Math.min(Math.max(8, r.left + r.width / 2 - w / 2), window.innerWidth - w - 8);
     t.style.left = x + 'px'; t.style.top = (r.bottom + 6) + 'px';
@@ -404,9 +406,8 @@
     for (var d = 1; d <= days; d++) {
       var isToday = d === todayBogota[2] && m + 1 === todayBogota[1] && y === todayBogota[0], list = eventsOf(y, m + 1, d), cls = 'dy' + (isToday ? ' today' : '');
       if (!list.length) { g.appendChild(h('div', { class: cls }, d)); continue; }
-      var types = []; list.forEach(function (e) { if (types.indexOf(e.type) < 0) types.push(e.type); });
-      var mk = h('span', { class: 'mk' }); types.slice(0, 3).forEach(function (t) { mk.appendChild(PX.svgIcon(ICON_EV[t] || 'star', 11)); });
-      var btn = h('button', { class: cls + ' has', type: 'button', 'aria-label': d + ': ' + list.map(evLabel).join(', ') }, d, mk);
+      // El emoji del evento reemplaza al número del día (con varios eventos, se muestra el primero).
+      var btn = h('button', { class: cls + ' has', type: 'button', 'aria-label': d + ': ' + list.map(evLabel).join(', ') }, h('span', { class: 'emo', 'aria-hidden': 'true' }, emo(list[0])));
       (function (b, l) {
         b.addEventListener('mouseenter', function () { showTip(b, l); }); b.addEventListener('mouseleave', hideTip);
         b.addEventListener('focus', function () { showTip(b, l); }); b.addEventListener('blur', hideTip);
@@ -419,7 +420,7 @@
     if (!monthList.length) { box.appendChild(h('div', { class: 'ev-none' }, 'Sin eventos este mes')); return; }
     monthList.forEach(function (x) {
       box.appendChild(h('div', { class: 'ev' }, h('span', { class: 'dd' }, String(x.d).padStart(2, '0') + '/' + String(m + 1).padStart(2, '0')),
-        PX.svgIcon(ICON_EV[x.e.type] || 'star', 14), h('span', null, h('b', null, evLabel(x.e)), x.e.description ? h('span', null, ' — ' + x.e.description) : null)));
+        h('span', null, emo(x.e)), h('span', null, h('b', null, evLabel(x.e)), x.e.description ? h('span', null, ' — ' + x.e.description) : null)));
     });
   }
   $('prev').onclick = function () { ref.setMonth(ref.getMonth() - 1); renderCal(); };

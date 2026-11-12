@@ -545,6 +545,18 @@
   var MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
   var TIPOS = { cumple: 'Cumpleaños', reunion: 'Reunión', capacitacion: 'Capacitación', otro: 'Otro' };
   var TIPO_ICON = { cumple: 'cake', reunion: 'meeting', capacitacion: 'training', otro: 'star' };
+
+  var EMOJIS = {
+    'Celebración': ['🎂','🎉','🎈','🎁','🥳','🍰','🧁','🍾','🥂','🎊','🪅','🎆','🎇','✨','🎀','💐','🌹','🎶','🎤','💃','🕺'],
+    'Trabajo': ['🤝','💼','📊','📈','📉','📅','🗓️','📌','📎','🖥️','💻','⌨️','🖨️','📞','📧','🗂️','📝','✅','⏰','⏳','🏢','🧾','💡','🔧','🛠️','⚙️'],
+    'Aprendizaje': ['🎓','📚','📖','🧠','🔬','🧪','🏫','✏️','🖊️','📐','🎯','🏆','🥇','🏅','🎖️','🌟','💬','🗣️'],
+    'Personas': ['🙋','👥','🧑‍🤝‍🧑','👨‍💼','👩‍💼','🧑‍💻','👷','🧑‍🏫','👶','🤱','💍','👨‍👩‍👧','🏥','🩺','💉','❤️','🧡','💛','💚','💙','💜'],
+    'Comida y pausa': ['☕','🍕','🍔','🌮','🍣','🥗','🍎','🍻','🍷','🍦','🍩','🥐','🎂','🍽️','🥘'],
+    'Deporte y ocio': ['⚽','🏀','🏐','🎾','🏃','🚴','🏊','🧘','🏋️','🎮','🎬','🎨','🎭','📷','🎵','🎸','🏖️','🏕️','🎳','♟️'],
+    'Viajes y transporte': ['✈️','🚗','🏍️','🛵','🚚','📦','🚌','🚆','🗺️','🧳','🏨','⛽','🚦'],
+    'Fechas y avisos': ['🎄','🎃','🐣','🇨🇴','🎅','🕯️','🧧','🌎','🌳','☀️','🌧️','❄️','🔔','📢','⚠️','🚨','🔒','⭐','🔥','💥','🆕','❗','❓']
+  };
+  var EMO_DEFAULT = { cumple: '🎂', reunion: '🤝', capacitacion: '🎓', otro: '⭐' };
   async function modCalendar(root) {
     root.append(h('p', { class: 'eyebrow' }, 'Agenda'), h('h1', null, 'Calendario'));
     var formBox = h('div'), evBox = h('div', { class: 'box' }), bdBox = h('div', { class: 'box' }), out = h('div'), all = [], q = '';
@@ -569,7 +581,7 @@
       evBox.textContent = ''; evBox.append(h('h2', null, 'Eventos (' + evs.length + ')'));
       if (!evs.length) evBox.append(h('p', { class: 'eyebrow' }, 'Sin eventos'));
       evs.forEach(function (e) {
-        var row = h('div', { class: 'row' }, PX.svgIcon(TIPO_ICON[e.type], 16), h('div', { class: 'grow' }, h('div', null, e.title), h('div', { class: 'sub' }, new Date(e.event_date + 'T00:00:00').toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' }) + (e.event_time ? ' · ' + e.event_time.slice(0, 5) : ''))), h('span', { class: 'tag' }, TIPOS[e.type]));
+        var row = h('div', { class: 'row' }, h('span', { style: 'font-size:20px;width:24px;text-align:center' }, e.emoji || EMO_DEFAULT[e.type]), h('div', { class: 'grow' }, h('div', null, e.title), h('div', { class: 'sub' }, new Date(e.event_date + 'T00:00:00').toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' }) + (e.event_time ? ' · ' + e.event_time.slice(0, 5) : ''))), h('span', { class: 'tag' }, TIPOS[e.type]));
         actions(e).forEach(function (x) { row.append(x); }); evBox.append(row);
       });
       var add = h('button', { class: 'b', type: 'button' }, '+ Nuevo evento'); add.onclick = function () { form(null, 'reunion'); };
@@ -580,7 +592,7 @@
       function s2() { var n = bdBox.querySelector('input'); if (n) { n.focus(); n.setSelectionRange(n.value.length, n.value.length); } }
       bdBox.append(s);
       bds.forEach(function (e) {
-        var row = h('div', { class: 'row' }, PX.svgIcon('cake', 16), h('div', { class: 'grow' }, h('div', null, e.person_name), h('div', { class: 'sub' }, e.event_day + ' de ' + MESES[e.event_month - 1])));
+        var row = h('div', { class: 'row' }, h('span', { style: 'font-size:20px;width:24px;text-align:center' }, e.emoji || EMO_DEFAULT.cumple), h('div', { class: 'grow' }, h('div', null, e.person_name), h('div', { class: 'sub' }, e.event_day + ' de ' + MESES[e.event_month - 1])));
         actions(e).forEach(function (x) { row.append(x); }); bdBox.append(row);
       });
       var addb = h('button', { class: 'b', type: 'button' }, '+ Nuevo cumpleaños'); addb.onclick = function () { form(null, 'cumple'); };
@@ -600,9 +612,24 @@
       var fb = h('div', null, field('Persona', name), h('div', { class: 'grid2' }, field('Mes', month), field('Día', day))), fe = h('div', null, field('Título', title), h('div', { class: 'grid2' }, field('Fecha', date), field('Hora (opcional)', time)));
       function sync() { var c = type.value === 'cumple'; fb.style.display = c ? '' : 'none'; fe.style.display = c ? 'none' : ''; }
       type.onchange = sync; sync();
+      // Emoji del evento: reemplaza el número del día en el calendario de la intranet.
+      var emoji = d.emoji || '', cur = h('button', { class: 'b', type: 'button', style: 'font-size:22px;min-width:54px' }), grid = h('div', { style: 'display:none;margin-top:8px;border:1px solid var(--border);border-radius:8px;padding:10px;max-height:240px;overflow:auto' });
+      var custom = h('input', { type: 'text', maxlength: 8, placeholder: 'Pega otro emoji…', style: 'max-width:160px' });
+      function showEmo() { cur.textContent = emoji || EMO_DEFAULT[type.value] || '⭐'; cur.title = emoji ? 'Emoji elegido' : 'Emoji por defecto del tipo'; }
+      function pick(v) { emoji = v; showEmo(); grid.style.display = 'none'; }
+      Object.keys(EMOJIS).forEach(function (cat) {
+        var row = h('div', { style: 'display:flex;flex-wrap:wrap;gap:2px;margin-bottom:8px' }); grid.append(h('p', { class: 'eyebrow' }, cat), row);
+        EMOJIS[cat].forEach(function (em) { var b = h('button', { type: 'button', 'aria-label': em, style: 'font-size:22px;width:38px;height:38px;border:0;background:none;border-radius:8px;cursor:pointer' }, em); b.onmouseenter = function () { b.style.background = 'var(--hover)'; }; b.onmouseleave = function () { b.style.background = 'none'; }; b.onclick = function () { pick(em); }; row.append(b); });
+      });
+      var useDef = h('button', { class: 'b', type: 'button' }, 'Usar el del tipo'); useDef.onclick = function () { pick(''); };
+      custom.onchange = function () { var v = custom.value.trim(); if (v) { pick(Array.from(v).slice(0, 4).join('')); custom.value = ''; } };
+      grid.append(h('div', { class: 'actions' }, custom, useDef));
+      cur.onclick = function () { grid.style.display = grid.style.display === 'none' ? 'block' : 'none'; };
+      type.addEventListener('change', showEmo); showEmo();
+      var emoField = h('div', null, h('label', null, 'Emoji (reemplaza el número del día)'), cur, grid);
       var out2 = h('div'), save = h('button', { class: 'b pri', type: 'button' }, 'Guardar'), cancel = h('button', { class: 'b', type: 'button' }, 'Cancelar'); cancel.onclick = function () { formBox.textContent = ''; };
       save.onclick = async function () {
-        var rec = { type: type.value, description: desc.value.trim(), visible: vis.value === '1' };
+        var rec = { type: type.value, description: desc.value.trim(), visible: vis.value === '1', emoji: emoji || null };
         if (rec.type === 'cumple') {
           var n = name.value.trim(), dd = parseInt(day.value, 10), mm = parseInt(month.value, 10);
           if (!n) return setMsg(out2, 'err', 'Escribe el nombre de la persona.');
@@ -622,7 +649,7 @@
         formBox.textContent = ''; setMsg(out, 'ok', 'Guardado.'); load();
       };
       formBox.textContent = '';
-      formBox.append(h('div', { class: 'box' }, h('h2', null, isNew ? 'Nuevo' : 'Editar'), field('Tipo', type), fb, fe, field('Descripción (opcional)', desc), field('Estado', vis), h('div', { class: 'actions' }, save, cancel), out2));
+      formBox.append(h('div', { class: 'box' }, h('h2', null, isNew ? 'Nuevo' : 'Editar'), field('Tipo', type), fb, fe, emoField, field('Descripción (opcional)', desc), field('Estado', vis), h('div', { class: 'actions' }, save, cancel), out2));
       formBox.firstChild.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
     load();
