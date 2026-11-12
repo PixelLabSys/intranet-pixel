@@ -192,9 +192,29 @@
     var rm = h('button', { class: 'b dng', type: 'button' }, 'Quitar imagen');
     var inputs = {};
     inputs.banner_eyebrow = h('input', { type: 'text', maxlength: 60, value: (cur.banner_eyebrow && cur.banner_eyebrow.value) || '' });
-    inputs.banner_title = h('input', { type: 'text', maxlength: 100, value: (cur.banner_title && cur.banner_title.value) || '' });
-    inputs.banner_text = h('textarea', { maxlength: 300 }); inputs.banner_text.value = (cur.banner_text && cur.banner_text.value) || '';
+    inputs.banner_title = h('input', { type: 'text', maxlength: 160, value: (cur.banner_title && cur.banner_title.value) || '' });
+    inputs.banner_text = h('textarea', { maxlength: 500 }); inputs.banner_text.value = (cur.banner_text && cur.banner_text.value) || '';
     var save = h('button', { class: 'b pri', type: 'button' }, 'Guardar textos');
+    // Barra de pesos: aplica Ligero / Normal / Negrita al texto seleccionado (guarda marcas [l] [b]).
+    function weightField(label, input) {
+      var prev = h('div', { class: 'rp' });
+      function upd() { prev.textContent = ''; prev.appendChild(PX.rich(input.value)); if (!input.value) prev.textContent = 'Vista previa'; }
+      function apply(kind) {
+        var a = input.selectionStart, b = input.selectionEnd; if (a === b) { return; }
+        var sel = PX.stripRich(input.value.slice(a, b));
+        var rep = kind === 'n' ? sel : '[' + kind + ']' + sel + '[/' + kind + ']';
+        input.value = input.value.slice(0, a) + rep + input.value.slice(b);
+        input.focus(); input.setSelectionRange(a, a + rep.length); upd();
+      }
+      var bar = h('div', { class: 'tb' });
+      [['l', 'Ligero'], ['n', 'Normal'], ['b', 'Negrita']].forEach(function (x) {
+        var bt = h('button', { class: 'b', type: 'button', style: 'font-weight:' + ({ l: 300, n: 400, b: 700 })[x[0]] }, x[1]);
+        bt.onmousedown = function (e) { e.preventDefault(); }; bt.onclick = function () { apply(x[0]); }; bar.append(bt);
+      });
+      bar.append(h('span', { class: 'hint' }, 'Selecciona texto y elige el peso'));
+      input.addEventListener('input', upd); upd();
+      return h('div', null, h('label', null, label), bar, input, prev);
+    }
 
     async function setImage(newPath) {
       var old = imgPath, row = cur.banner_image;
@@ -244,7 +264,7 @@
     };
     root.append(
       h('div', { class: 'box' }, h('h2', null, 'Imagen'), prev, h('p', { class: 'eyebrow', style: 'margin-top:10px' }, 'JPG, PNG o WebP · se ajusta a 1920 px de ancho'), h('div', { class: 'actions' }, file, rm)),
-      h('div', { class: 'box' }, h('h2', null, 'Textos'), field('Línea superior (pequeña)', inputs.banner_eyebrow), field('Título', inputs.banner_title), field('Texto', inputs.banner_text), h('div', { class: 'actions' }, save)),
+      h('div', { class: 'box' }, h('h2', null, 'Textos'), field('Línea superior (pequeña)', inputs.banner_eyebrow), weightField('Título', inputs.banner_title), weightField('Texto', inputs.banner_text), h('div', { class: 'actions' }, save)),
       out);
   }
 
