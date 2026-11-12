@@ -208,20 +208,68 @@
     });
   }
 
+
+  /* Editor de imagen: encuadra la imagen dentro del espacio (canva) con zoom y arrastre. Lo que ves es lo que se publica.
+     Devuelve un Blob JPEG ya recortado a la proporción del espacio (se re-codifica: también elimina metadatos EXIF). */
+  function imageEditor(file, rw, rh, outW, title) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file), im = new Image();
+      im.onerror = function () { URL.revokeObjectURL(url); reject(new Error('El archivo no es una imagen válida (usa JPG, PNG o WebP).')); };
+      im.onload = function () {
+        URL.revokeObjectURL(url);
+        var vw = Math.min(560, window.innerWidth - 80), vh = Math.round(vw * rh / rw);
+        var cv = h('canvas', { width: vw, height: vh }), ctx = cv.getContext('2d');
+        var contain = Math.min(vw / im.width, vh / im.height), cover = Math.max(vw / im.width, vh / im.height);
+        var st = { s: cover, x: 0, y: 0 };
+        var range = h('input', { type: 'range', min: Math.round(contain / cover * 50) / 100, max: 4, step: 0.01, value: 1, 'aria-label': 'Tamaño de la imagen' });
+        function clamp() { var hw = im.width * st.s / 2 + vw / 2 - 40, hh = im.height * st.s / 2 + vh / 2 - 40; st.x = Math.max(-hw, Math.min(hw, st.x)); st.y = Math.max(-hh, Math.min(hh, st.y)); }
+        function paint(c, cx, k) {
+          cx.fillStyle = '#171f2b'; cx.fillRect(0, 0, c.width, c.height);
+          cx.drawImage(im, c.width / 2 + st.x * k - im.width * st.s * k / 2, c.height / 2 + st.y * k - im.height * st.s * k / 2, im.width * st.s * k, im.height * st.s * k);
+        }
+        function draw() { clamp(); paint(cv, ctx, 1); }
+        function setMult(m) { st.s = cover * m; range.value = m; draw(); }
+        range.oninput = function () { setMult(parseFloat(range.value)); };
+        var drag = null;
+        cv.onpointerdown = function (e) { drag = { x: e.clientX, y: e.clientY, ox: st.x, oy: st.y }; cv.setPointerCapture(e.pointerId); };
+        cv.onpointermove = function (e) { if (!drag) return; st.x = drag.ox + (e.clientX - drag.x) * (vw / cv.clientWidth); st.y = drag.oy + (e.clientY - drag.y) * (vw / cv.clientWidth); draw(); };
+        cv.onpointerup = cv.onpointercancel = function () { drag = null; };
+        cv.addEventListener('wheel', function (e) { e.preventDefault(); var m = Math.min(4, Math.max(parseFloat(range.min), st.s / cover * (e.deltaY < 0 ? 1.06 : 0.94))); setMult(m); }, { passive: false });
+        var fit = h('button', { class: 'b', type: 'button' }, 'Ver completa'), fill = h('button', { class: 'b', type: 'button' }, 'Llenar el espacio'), center = h('button', { class: 'b', type: 'button' }, 'Centrar');
+        fit.onclick = function () { st.x = st.y = 0; setMult(contain / cover); }; fill.onclick = function () { st.x = st.y = 0; setMult(1); }; center.onclick = function () { st.x = st.y = 0; draw(); };
+        var ok = h('button', { class: 'b pri', type: 'button' }, 'Aplicar'), no = h('button', { class: 'b', type: 'button' }, 'Cancelar');
+        var ov = h('div', { class: 'ov', role: 'dialog', 'aria-modal': 'true' }, h('div', { class: 'dlg' }, h('h2', null, title || 'Encuadra la imagen'),
+          h('p', { class: 'eyebrow' }, 'Arrastra para mover · rueda o barra para el tamaño. Lo que ves es lo que se publica.'), cv,
+          h('label', null, 'Tamaño'), range, h('div', { class: 'actions' }, fit, fill, center), h('div', { class: 'actions' }, ok, no)));
+        function close(v) { document.removeEventListener('keydown', onKey); ov.remove(); resolve(v); }
+        function onKey(e) { if (e.key === 'Escape') close(null); }
+        document.addEventListener('keydown', onKey);
+        no.onclick = function () { close(null); };
+        ok.onclick = function () {
+          var out = document.createElement('canvas'); out.width = outW; out.height = Math.round(outW * rh / rw);
+          paint(out, out.getContext('2d'), outW / vw);
+          out.toBlob(function (b) { b ? close(b) : close(null); }, 'image/jpeg', 0.88);
+        };
+        document.body.appendChild(ov); draw(); ok.focus();
+      };
+      im.src = url;
+    });
+  }
+
   async function modBanner(root) {
     root.append(h('p', { class: 'eyebrow' }, 'Portada'), h('h1', null, 'Banner'));
     var r = await sb.from('site_settings').select('key,value,updated_at');
     if (r.error) return root.append(msg('err', 'No se pudo cargar: ' + friendly(r.error)));
     var cur = {}; r.data.forEach(function (x) { cur[x.key] = x; });
     var out = h('div'), imgPath = (cur.banner_image && cur.banner_image.value) || '';
-    var prev = h('div', { class: 'preview' }, 'Sin imagen (se muestra el fondo de píxeles)');
+    var prev = h('div', { class: 'preview', style: 'aspect-ratio:16/6' }, 'Sin imagen (se muestra el fondo de píxeles)');
     function paint() {
       var u = PX.mediaUrl(CFG, imgPath); prev.textContent = '';
       if (u) { prev.style.backgroundImage = 'url("' + u + '")'; } else { prev.style.backgroundImage = ''; prev.textContent = 'Sin imagen (se muestra el fondo de píxeles)'; }
     }
     paint();
     var file = h('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp' });
-    var rm = h('button', { class: 'b dng', type: 'button' }, 'Quitar imagen');
+    var rm = h('button', { class: 'b dng', type: 'button' }, 'Quitar imagen'), reframe = h('button', { class: 'b', type: 'button' }, 'Reencuadrar la actual');
     var inputs = {};
     inputs.banner_eyebrow = h('input', { type: 'text', maxlength: 160, value: (cur.banner_eyebrow && cur.banner_eyebrow.value) || '' });
     inputs.banner_title = h('input', { type: 'text', maxlength: 160, value: (cur.banner_title && cur.banner_title.value) || '' });
@@ -239,18 +287,20 @@
       cur.banner_image = u.data[0]; imgPath = newPath; paint();
       if (old && old !== newPath) await sb.storage.from('media').remove([old]); // no deja archivos huérfanos
     }
-    file.onchange = async function () {
-      var f = file.files[0]; if (!f) return;
+    async function fromCurrent() { var u = PX.mediaUrl(CFG, imgPath); if (!u) return; try { return await (await fetch(u)).blob(); } catch (e) { setMsg(out, 'err', 'No se pudo cargar la imagen actual.'); } }
+    reframe.onclick = async function () { var b = await fromCurrent(); if (b) processFile(b); };
+    file.onchange = function () { var f = file.files[0]; if (f) processFile(f); file.value = ''; };
+    async function processFile(f) {
       setMsg(out, '', 'Procesando imagen…');
       try {
-        var blob = await resizeImage(f, 1920), name = crypto.randomUUID() + '.jpg';
+        var blob = await imageEditor(f, 16, 6, 1920, 'Encuadra el banner'); if (!blob) { setMsg(out, '', ''); return; }
+        var name = crypto.randomUUID() + '.jpg';
         var up = await sb.storage.from('media').upload(name, blob, { contentType: 'image/jpeg', upsert: false });
         if (up.error) throw up.error;
         try { await setImage(name); } catch (e) { await sb.storage.from('media').remove([name]); throw e; }
         setMsg(out, 'ok', 'Imagen actualizada. Ya se ve en la intranet.');
       } catch (e) { setMsg(out, 'err', friendly(e)); }
-      file.value = '';
-    };
+    }
     rm.onclick = async function () {
       if (!imgPath) return;
       if (!confirm('¿Quitar la imagen del banner? Volverá el fondo de píxeles.')) return;
@@ -275,7 +325,7 @@
       busy(save, false);
     };
     root.append(
-      h('div', { class: 'box' }, h('h2', null, 'Imagen'), prev, h('p', { class: 'eyebrow', style: 'margin-top:10px' }, 'JPG, PNG o WebP · se ajusta a 1920 px de ancho'), h('div', { class: 'actions' }, file, rm)),
+      h('div', { class: 'box' }, h('h2', null, 'Imagen'), prev, h('p', { class: 'eyebrow', style: 'margin-top:10px' }, 'JPG, PNG o WebP · se ajusta a 1920 px de ancho'), h('div', { class: 'actions' }, file, reframe, rm)),
       h('div', { class: 'box' }, h('h2', null, 'Textos'), weightField('Línea superior (pequeña)', inputs.banner_eyebrow), weightField('Título', inputs.banner_title), weightField('Texto', inputs.banner_text), h('div', { class: 'actions' }, save)),
       out);
   }
@@ -435,21 +485,24 @@
       var date = h('input', { type: 'date', value: d.published_on });
       var st = h('select', null, h('option', { value: 'draft' }, 'Borrador (no visible)'), h('option', { value: 'published' }, 'Publicada')); st.value = d.status;
       var imgPath = d.image_path || '', uploaded = [];
-      var prev = h('div', { class: 'preview', style: 'aspect-ratio:16/9;background-size:contain;background-repeat:no-repeat' });
+      var prev = h('div', { class: 'preview', style: 'aspect-ratio:16/9;background-repeat:no-repeat' });
       function paint() { var u = PX.mediaUrl(CFG, imgPath); prev.textContent = ''; prev.style.backgroundImage = u ? 'url("' + u + '")' : ''; if (!u) prev.textContent = 'Sin imagen'; }
       paint();
       var file = h('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp' }), rm = h('button', { class: 'b dng', type: 'button' }, 'Quitar imagen');
       var out2 = h('div');
-      file.onchange = async function () {
-        var f = file.files[0]; if (!f) return; setMsg(out2, '', 'Procesando imagen…');
+      var reframe = h('button', { class: 'b', type: 'button' }, 'Reencuadrar la actual');
+      reframe.onclick = async function () { var u = PX.mediaUrl(CFG, imgPath); if (!u) return; try { processFile(await (await fetch(u)).blob()); } catch (e) { setMsg(out2, 'err', 'No se pudo cargar la imagen actual.'); } };
+      file.onchange = function () { var f = file.files[0]; if (f) processFile(f); file.value = ''; };
+      async function processFile(f) {
+        setMsg(out2, '', 'Procesando imagen…');
         try {
-          var blob = await resizeImage(f, 1280), name = crypto.randomUUID() + '.jpg';
+          var blob = await imageEditor(f, 16, 9, 1280, 'Encuadra la imagen de la noticia'); if (!blob) { setMsg(out2, '', ''); return; }
+          var name = crypto.randomUUID() + '.jpg';
           var up = await sb.storage.from('media').upload(name, blob, { contentType: 'image/jpeg', upsert: false });
           if (up.error) throw up.error;
           uploaded.push(name); imgPath = name; paint(); setMsg(out2, 'ok', 'Imagen lista. Guarda la noticia para aplicarla.');
         } catch (e) { setMsg(out2, 'err', friendly(e)); }
-        file.value = '';
-      };
+      }
       rm.onclick = function () { imgPath = ''; paint(); };
       var save = h('button', { class: 'b pri', type: 'button' }, 'Guardar'), cancel = h('button', { class: 'b', type: 'button' }, 'Cancelar');
       async function cleanup(keep) { var junk = uploaded.filter(function (x) { return x !== keep; }); if (junk.length) await sb.storage.from('media').remove(junk); }
@@ -474,7 +527,7 @@
       formBox.append(h('div', { class: 'box' }, h('h2', null, isNew ? 'Nueva noticia' : 'Editar noticia'),
         weightField('Título', title), weightField('Texto', body),
         h('div', { class: 'grid2' }, field('Categoría', cat), field('Fecha', date)), dl, field('Estado', st),
-        h('label', null, 'Imagen'), prev, h('div', { class: 'actions' }, file, rm),
+        h('label', null, 'Imagen'), prev, h('div', { class: 'actions' }, file, reframe, rm),
         h('div', { class: 'actions' }, save, cancel), out2));
       formBox.firstChild.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }

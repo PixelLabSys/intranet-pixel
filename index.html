@@ -100,7 +100,7 @@
   .nw { overflow: hidden; }
   /* Espacio fijo para la imagen (mismo tamaño en todas las tarjetas): la imagen se encaja completa dentro. */
   .nw .img { position: relative; aspect-ratio: 16 / 9; overflow: hidden; background: var(--chip); border-bottom: 1px solid var(--border); display: grid; place-items: center; }
-  .nw .img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; }
+  .nw .img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; } /* la imagen ya viene encuadrada desde el backoffice */
   .nw .img img.ph { position: static; width: 46px; height: auto; }
   .nw .b { padding: 16px 20px 20px; }
   .nw h3 { margin: 6px 0; font-size: 14px; font-weight: 500; line-height: 1.35; }
