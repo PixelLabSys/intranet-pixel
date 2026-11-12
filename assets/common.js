@@ -37,10 +37,11 @@
     down: '<path d="m6 9 6 6 6-6"/>',
     plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
     logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>',
+    moto: '<circle cx="5.5" cy="17.5" r="3"/><circle cx="18.5" cy="17.5" r="3"/><path d="M5.5 17.5 8 12h6l-1.5 5.5H9"/><path d="M8 12 6.5 9.5H4"/><path d="M14 12l2.5-5H19"/><path d="M14 12l4.5 5.5"/><path d="M9 9.5h4.5L14 12"/>',
     shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>'
   };
-  var ICON_KEYS = ['card','users','briefcase','ops','gear','book','search','code','chat','camera','file','activity','zap','cake','calendar','megaphone','link','home','folder','chart','mail','star','training','meeting'];
-  var ICON_LABELS = { card:'Tarjeta', users:'Personas', briefcase:'Maletín', ops:'Documento con check', gear:'Engranaje', book:'Libro', search:'Lupa', code:'Código', chat:'Mensaje', camera:'Cámara', file:'Documento', activity:'Actividad', zap:'Rayo', cake:'Torta', calendar:'Calendario', megaphone:'Megáfono', link:'Enlace', home:'Casa', folder:'Carpeta', chart:'Gráfica', mail:'Correo', star:'Estrella', training:'Capacitación', meeting:'Reunión' };
+  var ICON_KEYS = ['card','users','briefcase','ops','gear','book','search','code','chat','camera','file','activity','zap','cake','calendar','megaphone','link','home','folder','chart','mail','star','training','meeting','moto'];
+  var ICON_LABELS = { moto:'Motocicleta', card:'Tarjeta', users:'Personas', briefcase:'Maletín', ops:'Documento con check', gear:'Engranaje', book:'Libro', search:'Lupa', code:'Código', chat:'Mensaje', camera:'Cámara', file:'Documento', activity:'Actividad', zap:'Rayo', cake:'Torta', calendar:'Calendario', megaphone:'Megáfono', link:'Enlace', home:'Casa', folder:'Carpeta', chart:'Gráfica', mail:'Correo', star:'Estrella', training:'Capacitación', meeting:'Reunión' };
   var SVGNS = 'http://www.w3.org/2000/svg';
 
   function svgIcon(name, size) {
