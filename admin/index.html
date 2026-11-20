@@ -44,7 +44,7 @@
   .sw-theme .knob svg { width:13px; height:13px; grid-area:1/1; } .sw-theme .sun { display:none; } .dark .sw-theme .moon { display:block; } .dark .sw-theme .sun { display:none; } .sw-theme .moon { display:none; } .sw-theme[aria-checked=true] .sun { display:block; }
   .sw-theme:focus-visible { outline:2px solid var(--fg); outline-offset:2px; }
   .shell { display:grid; grid-template-columns:210px 1fr; min-height:100vh; }
-  aside { border-right:1px solid var(--border); padding:20px 14px; display:flex; flex-direction:column; gap:4px; background:var(--surface); }
+  aside { position:sticky; top:0; height:100vh; height:100dvh; overflow-y:auto; border-right:1px solid var(--border); padding:20px 14px; display:flex; flex-direction:column; gap:4px; background:var(--surface); }
   aside .logo { margin:0 6px 20px; }
   aside button.tab { display:flex; align-items:center; gap:10px; width:100%; padding:9px 10px; font:inherit; font-weight:500; text-align:left; color:var(--muted); background:none; border:0; border-radius:8px; cursor:pointer; }
   aside button.tab:hover { background:var(--hover); color:var(--fg); } aside button.tab.on { background:var(--fg); color:var(--bg); }
@@ -71,7 +71,7 @@
   .ov canvas { display:block; margin:12px auto; border:1px solid var(--border); border-radius:8px; cursor:grab; touch-action:none; max-width:100%; }
   .ov canvas:active { cursor:grabbing; } .ov input[type=range] { width:100%; }
   .soon { color:var(--subtle); padding:40px 0; text-align:center; }
-  @media (max-width:760px) { .shell { grid-template-columns:1fr; } aside { flex-direction:row; flex-wrap:wrap; border-right:0; border-bottom:1px solid var(--border); padding:12px; } aside .logo { width:100%; margin:0 0 8px; }
+  @media (max-width:760px) { .shell { grid-template-columns:1fr; } aside { position:static; height:auto; overflow:visible; flex-direction:row; flex-wrap:wrap; border-right:0; border-bottom:1px solid var(--border); padding:12px; } aside .logo { width:100%; margin:0 0 8px; }
     aside .foot { margin:0; width:100%; flex-direction:row; align-items:center; flex-wrap:wrap; } main { padding:20px 16px 48px; } .grid2 { grid-template-columns:1fr; }
     /* filas con muchos botones: el texto ocupa la primera línea y las acciones pasan debajo */
     .row { flex-wrap:wrap; } .row .grow { flex:1 1 100%; } .row.child { padding-left:14px; } .box { padding:16px; } aside button.tab { width:auto; } .ov .dlg { padding:14px; } }
