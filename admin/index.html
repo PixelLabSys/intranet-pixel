@@ -79,10 +79,26 @@
   .ov canvas { display:block; margin:12px auto; border:1px solid var(--border); border-radius:8px; cursor:grab; touch-action:none; max-width:100%; }
   .ov canvas:active { cursor:grabbing; } .ov input[type=range] { width:100%; }
   .soon { color:var(--subtle); padding:40px 0; text-align:center; }
-  @media (max-width:760px) { .shell { grid-template-columns:1fr; } aside { position:static; height:auto; overflow:visible; flex-direction:row; flex-wrap:wrap; border-right:0; border-bottom:1px solid var(--border); padding:12px; } aside .logo { width:100%; margin:0 0 8px; }
-    aside .foot { margin:0; width:100%; flex-direction:row; align-items:center; flex-wrap:wrap; } main { padding:20px 16px 48px; } .grid2 { grid-template-columns:1fr; }
+  .tabs { display:flex; flex-direction:column; gap:4px; }
+  .lg-short { display:none; }
+  @media (max-width:760px) {
+    .shell { grid-template-columns:1fr; display:block; }
+    /* barra superior compacta y fija: logo + cuenta arriba, menús en una sola fila que se desliza */
+    aside { position:sticky; top:0; z-index:50; height:auto; overflow:visible; flex-direction:row; flex-wrap:wrap; align-items:center; gap:6px 10px; border-right:0; border-bottom:1px solid var(--border); padding:8px 12px 0; }
+    aside > div:first-child { order:1; flex:1; min-width:0; } aside .logo { margin:0; }
+    aside .foot { order:2; display:flex; margin:0; width:auto; flex-direction:row; align-items:center; gap:10px; }
+    aside .foot > span { display:none; } .avatar { width:30px; height:30px; font-size:13px; }
+    .lg-long { display:none; } .lg-short { display:inline; } aside .foot button.b { padding:6px 10px; font-size:12px; }
+    aside .tabs { order:3; flex:1 1 100%; flex-direction:row; gap:4px; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; margin:0 -12px; padding:0 12px 8px; scroll-padding:0 12px; }
+    aside .tabs::-webkit-scrollbar { display:none; }
+    aside button.tab { width:auto; flex:none; white-space:nowrap; padding:9px 12px; }
+    main { padding:18px 16px 48px; } .grid2 { grid-template-columns:1fr; } h1 { font-size:20px; margin-bottom:14px; }
     /* filas con muchos botones: el texto ocupa la primera línea y las acciones pasan debajo */
-    .row { flex-wrap:wrap; } .row .grow { flex:1 1 100%; } .row.child { padding-left:14px; } .box { padding:16px; } aside button.tab { width:auto; } .ov .dlg { padding:14px; } }
+    .row { flex-wrap:wrap; } .row .grow { flex:1 1 100%; } .row.child { padding-left:14px; } .box { padding:16px; } .ov .dlg { padding:14px; }
+    input[type=text], input[type=email], input[type=password], input[type=url], select, textarea, .rte { font-size:16px; } /* evita el zoom automático de iPhone al escribir */
+    input[type=date], input[type=time], input[type=number], input[type=file] { width:100%; min-height:42px; font:inherit; font-size:16px; color:var(--fg); background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:8px 10px; }
+    .actions button.b { min-height:40px; } .ib { width:34px; height:34px; } .row { gap:6px; } .row > button.b { padding:7px 10px; font-size:13px; } .row .tag { padding:2px 6px; }
+  }
 </style>
 </head>
 <body>
@@ -90,8 +106,8 @@
 <script src="../assets/config.js"></script>
 <script src="../assets/common.js?v=5"></script>
 <script src="../assets/supabase-js-2.117.3.min.js"></script>
-<script src="ayuda.js?v=3"></script>
-<script src="admin.js?v=10"></script>
+<script src="ayuda.js?v=4"></script>
+<script src="admin.js?v=12"></script>
 <script>var st = document.createElement('style'); st.textContent = PX.richCss(); document.head.appendChild(st);</script>
 </body>
 </html>

@@ -107,15 +107,16 @@
       ['banner', 'Banner', 'image'], ['menus', 'Menús', 'menu'], ['noticias', 'Noticias', 'megaphone'],
       ['calendario', 'Calendario', 'calendar'], ['herramientas', 'Herramientas', 'gear'], ['accesos', 'Accesos', 'users'], ['admins', 'Administradores', 'shield'], ['ayuda', 'Ayuda', 'help']
     ], btns = {};
-    var aside = h('aside', null, logos());
+    var aside = h('aside', null, logos()), tabsBox = h('nav', { class: 'tabs', 'aria-label': 'Módulos' });
     tabs.forEach(function (t) {
       var b = h('button', { class: 'tab', type: 'button' }, PX.svgIcon(t[2], 16), t[1]); btns[t[0]] = b;
-      b.onclick = function () { go(t[0]); }; aside.append(b);
+      b.onclick = function () { go(t[0]); }; tabsBox.append(b);
       if (t[0] === 'ayuda') { badge = h('span', { class: 'dot hidden', 'aria-label': 'Novedades sin leer' }); b.append(badge); }
     });
+    aside.append(tabsBox);
     refreshBadge = function () { var n = ayudaUnread().length; if (badge) { badge.textContent = n > 9 ? '9+' : String(n); badge.classList.toggle('hidden', n === 0); } };
     refreshBadge();
-    var out = h('button', { class: 'b', type: 'button' }, 'Cerrar sesión'); out.onclick = logout;
+    var out = h('button', { class: 'b', type: 'button' }, h('span', { class: 'lg-long' }, 'Cerrar sesión'), h('span', { class: 'lg-short' }, 'Salir')); out.onclick = logout;
     var theme = h('button', { class: 'sw-theme', type: 'button', role: 'switch', 'aria-label': 'Cambiar tema' });
     var knob = h('span', { class: 'knob' }, PX.svgIcon('sun'), PX.svgIcon('moon'));
     knob.firstChild.setAttribute('class', 'sun'); knob.lastChild.setAttribute('class', 'moon');
@@ -130,6 +131,7 @@
     aside.append(h('div', { class: 'foot' }, av, nm ? h('span', { class: 'nm' }, nm) : null, h('span', null, user.email), theme, out));
     function go(k) {
       current = k; Object.keys(btns).forEach(function (x) { btns[x].classList.toggle('on', x === k); });
+      try { btns[k].scrollIntoView({ inline: 'center', block: 'nearest' }); } catch (e) {}
       main.textContent = '';
       var mods = { banner: modBanner, menus: modMenus, noticias: modNews, calendario: modCalendar, herramientas: modTools, accesos: modAccess, admins: modAdmins, ayuda: modAyuda };
       mods[k] ? mods[k](main, user) : modSoon(main, k);

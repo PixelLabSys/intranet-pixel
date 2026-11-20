@@ -3,6 +3,8 @@
    (formato AAAA-MM-DD-n) y sube ?v= de ayuda.js en admin/index.html. Al abrir Ayuda se apaga el círculo rojo. */
 window.PX_AYUDA = {
   novedades: [
+    { id: '2026-11-20-7', fecha: '2026-11-20', titulo: 'Backoffice optimizado para celular',
+      items: ['Barra superior compacta y fija: logo, tu cuenta, tema y Salir, con los módulos en una fila que se desliza hacia los lados.', 'Más espacio para trabajar: botones de las listas en una sola línea, campos de fecha y hora a todo el ancho y teclado sin zoom automático en iPhone.'] },
     { id: '2026-11-20-6', fecha: '2026-11-20', titulo: 'Noticias más largas y con párrafos',
       items: ['El texto de una noticia ahora admite hasta 1800 caracteres y saltos de línea con Enter (puedes usar negrita para los subtítulos).', 'En la intranet la tarjeta muestra un resumen y la noticia completa se abre con un clic.'] },
     { id: '2026-11-20-5', fecha: '2026-11-20', titulo: 'Las noticias se abren completas en la intranet',
