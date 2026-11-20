@@ -3,6 +3,8 @@
    (formato AAAA-MM-DD-n) y sube ?v= de ayuda.js en admin/index.html. Al abrir Ayuda se apaga el círculo rojo. */
 window.PX_AYUDA = {
   novedades: [
+    { id: '2026-11-20-6', fecha: '2026-11-20', titulo: 'Noticias más largas y con párrafos',
+      items: ['El texto de una noticia ahora admite hasta 1800 caracteres y saltos de línea con Enter (puedes usar negrita para los subtítulos).', 'En la intranet la tarjeta muestra un resumen y la noticia completa se abre con un clic.'] },
     { id: '2026-11-20-5', fecha: '2026-11-20', titulo: 'Las noticias se abren completas en la intranet',
       items: ['Al hacer clic en una noticia o anuncio de la intranet se abre una ventana con la imagen y el texto completos. Se cierra con la X, con Esc o haciendo clic fuera.'] },
     { id: '2026-11-20-4', fecha: '2026-11-20', titulo: 'Centro de ayuda',
@@ -34,7 +36,7 @@ window.PX_AYUDA = {
       'Con "+ Agregar elemento" creas uno. Elige su tipo: sección de la página, enlace a una dirección web (https:// o mailto:) o una herramienta de la lista.',
       'Las flechas suben y bajan el orden; el lápiz edita; la papelera elimina. Un elemento puede ocultarse sin borrarlo. El menú superior admite un solo nivel de submenús.'] },
     { t: 'Noticias', p: [
-      'Con "+ Nueva noticia" escribes título y texto (con formato en vivo), eliges categoría y fecha, y subes una imagen que encuadras con Zoom y Alto.',
+      'Con "+ Nueva noticia" escribes título y texto (con formato en vivo; el texto admite párrafos con Enter y hasta 1800 caracteres), eliges categoría y fecha, y subes una imagen que encuadras con Zoom y Alto.',
       'El estado Borrador no se ve en la intranet; Publicada sí.',
       'La intranet muestra solo 2 noticias: las Destacadas. En "Destacadas en la intranet" eliges cuáles son. Solo se pueden destacar noticias publicadas, y si despublicas una destacada, el cupo queda libre.'] },
     { t: 'Calendario', p: [

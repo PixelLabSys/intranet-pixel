@@ -144,7 +144,7 @@
      richEditor(inicial, { maxText, dbMax, style, tall, placeholder }) -> { node, value (get/set), tooLong(), focus() } */
   function richEditor(initial, opts) {
     opts = opts || {};
-    var el = h('div', { class: 'rte' + (opts.tall ? ' tall' : ''), contenteditable: 'true', role: 'textbox', 'aria-multiline': 'false', spellcheck: 'true', 'data-ph': opts.placeholder || '', style: opts.style || '' });
+    var el = h('div', { class: 'rte' + (opts.tall ? ' tall' : ''), contenteditable: 'true', role: 'textbox', 'aria-multiline': opts.multiline ? 'true' : 'false', spellcheck: 'true', 'data-ph': opts.placeholder || '', style: opts.style || '' });
     var lastSel = null, ed = { node: el };
     function parse(str) {
       var runs = [], w = null, c = null;
@@ -164,16 +164,30 @@
     }
     function render(runs) {
       el.textContent = '';
-      merge(runs).forEach(function (r) {
+      var m = merge(runs);
+      m.forEach(function (r) {
         if (r.w || r.c) el.appendChild(h('span', { class: (r.w ? 'w-' + r.w : '') + (r.w && r.c ? ' ' : '') + (r.c ? 'c-' + r.c : '') }, r.t));
         else el.appendChild(document.createTextNode(r.t));
       });
+      if (opts.multiline && m.length && /\n$/.test(m[m.length - 1].t)) el.appendChild(document.createElement('br')); // para que el salto final se vea
+    }
+    // Reemplaza la selección (o inserta en el cursor) por texto plano, conservando el formato del entorno (solo modo varias líneas)
+    function insertPlain(t) {
+      var runs = domRuns(), total = runs.reduce(function (n, r) { return n + r.t.length; }, 0);
+      var sel = getSel() || lastSel || [total, total], a = sel[0], b = sel[1];
+      function slice(from, to) {
+        var out = [], pos = 0;
+        runs.forEach(function (r) { var s0 = pos, e0 = pos + r.t.length; pos = e0; var i1 = Math.max(from, s0) - s0, i2 = Math.min(to, e0) - s0; if (i2 > i1) out.push({ t: r.t.slice(i1, i2), w: r.w, c: r.c }); });
+        return out;
+      }
+      var before = slice(0, a), after = slice(b, Infinity), fm = before[before.length - 1] || after[0] || { w: null, c: null };
+      render(before.concat([{ t: t, w: fm.w, c: fm.c }], after)); el.focus(); setSel(a + t.length, a + t.length); lastSel = [a + t.length, a + t.length];
     }
     function domRuns() {
       var runs = [];
       (function walk(node, w, c) {
         node.childNodes.forEach(function (n) {
-          if (n.nodeType === 3) { runs.push({ t: n.nodeValue.replace(/ /g, ' ').replace(/[\r\n]+/g, ' '), w: w, c: c }); return; }
+          if (n.nodeType === 3) { runs.push({ t: n.nodeValue.replace(/ /g, ' ').replace(opts.multiline ? /\r/g : /[\r\n]+/g, opts.multiline ? '' : ' '), w: w, c: c }); return; }
           if (n.nodeType !== 1 || n.nodeName === 'BR') return;
           var w2 = n.classList.contains('w-l') ? 'l' : n.classList.contains('w-b') ? 'b' : w, c2 = c;
           Object.keys(PX.COLORS).forEach(function (k) { if (n.classList.contains('c-' + k)) c2 = k; });
@@ -229,15 +243,16 @@
       render(out); el.focus(); setSel(a, b); lastSel = [a, b];
     };
     el.addEventListener('beforeinput', function (e) {
-      if (/^insertParagraph|^insertLineBreak/.test(e.inputType)) { e.preventDefault(); return; }       // una sola línea
+      if (/^insertParagraph|^insertLineBreak/.test(e.inputType)) { e.preventDefault(); if (opts.multiline && (!opts.maxText || textLen() < opts.maxText)) insertPlain('\n'); return; }       // una sola línea (o salto manual en modo varias líneas)
       if (/^format/.test(e.inputType)) { e.preventDefault(); return; }                                  // sin negrita/cursiva nativas
       if (opts.maxText && /^insert/.test(e.inputType) && e.inputType !== 'insertFromPaste' && textLen() >= opts.maxText) { var s = getSel(); if (!s || s[0] === s[1]) e.preventDefault(); }
     });
     el.addEventListener('paste', function (e) { // siempre texto plano
       e.preventDefault();
-      var t = ((e.clipboardData || window.clipboardData).getData('text') || '').replace(/\s+/g, ' ');
+      var raw = ((e.clipboardData || window.clipboardData).getData('text') || '');
+      var t = opts.multiline ? raw.replace(/\r/g, '').replace(/[ \t\u00a0]+/g, ' ').replace(/ ?\n ?/g, '\n').replace(/\n{3,}/g, '\n\n') : raw.replace(/\s+/g, ' ');
       if (opts.maxText) { var s = getSel(), sel = s ? s[1] - s[0] : 0; t = t.slice(0, Math.max(0, opts.maxText - textLen() + sel)); }
-      if (t) document.execCommand('insertText', false, t);
+      if (t) { if (opts.multiline) insertPlain(t); else document.execCommand('insertText', false, t); }
     });
     el.addEventListener('drop', function (e) { e.preventDefault(); });
     el.addEventListener('keydown', function (e) {
@@ -567,7 +582,7 @@
     function form(n) {
       var isNew = !n, d = n || { title: '', body: '', category: 'General', image_path: null, status: 'draft', published_on: new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }) };
       var title = richEditor(d.title, { maxText: 100, dbMax: 140, placeholder: 'Título de la noticia', style: 'font-size:15px;font-weight:500;line-height:1.35' });
-      var body = richEditor(d.body, { maxText: 400, dbMax: 2000, tall: true, placeholder: 'Texto de la noticia', style: 'font-size:13px;line-height:1.5' });
+      var body = richEditor(d.body, { maxText: 1800, dbMax: 2000, tall: true, multiline: true, placeholder: 'Texto de la noticia', style: 'font-size:13px;line-height:1.5' });
       var cat = h('input', { type: 'text', maxlength: 40, list: 'cats', value: d.category });
       var dl = h('datalist', { id: 'cats' }); ['Anuncios', 'Novedades', 'Eventos', 'General'].forEach(function (c) { dl.append(h('option', { value: c })); });
       var date = h('input', { type: 'date', value: d.published_on });

@@ -144,6 +144,7 @@
   .nw .img img.ph { width: 46px; }
   .nw .b { padding: 16px 20px 20px; }
   .nw h3 { margin: 6px 0; font-size: 14px; font-weight: 500; line-height: 1.35; }
+  .nw p.res { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; white-space: normal; }
   .nw p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.5; }
   .nw .d { margin-top: 10px; font-family: var(--font-mono); font-size: 11px; color: var(--subtle); }
   .empty { font-size: 13px; color: var(--subtle); padding: 12px 0; }
@@ -418,7 +419,7 @@
       var img = PX.mediaUrl(CFG, n.image_path);
       var card = h('article', { class: 'box nw', tabindex: '0', role: 'button', 'aria-label': 'Abrir noticia: ' + PX.stripRich(n.title) },
         h('div', { class: 'img' + (img ? '' : ' empty') }, img ? h('img', { src: img, alt: '' }) : h('img', { class: 'ph', src: 'icon.png', alt: '' })),
-        h('div', { class: 'b' }, h('p', { class: 'eyebrow' }, n.category), h('h3', null, PX.rich(n.title)), h('p', null, PX.rich(n.body)), h('div', { class: 'd' }, fmtDate(n.published_on))));
+        h('div', { class: 'b' }, h('p', { class: 'eyebrow' }, n.category), h('h3', null, PX.rich(n.title)), h('p', { class: 'res' }, PX.rich(n.body)), h('div', { class: 'd' }, fmtDate(n.published_on))));
       card.onclick = function () { openNews(n, img, card); };
       card.onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openNews(n, img, card); } };
       box.appendChild(card);
