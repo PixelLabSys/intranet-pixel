@@ -52,6 +52,20 @@
   .hero.foto .who .nm { color: #fff; } .hero.foto .who .em { color: rgba(255,255,255,.75); }
   @media (max-width: 760px) { .who .tx { display: none; } }
   .iconbtn.logout { width: auto; height: 34px; padding: 0 12px; display: inline-flex; align-items: center; justify-content: center; font: inherit; font-size: 12px; line-height: 1; white-space: nowrap; }
+  /* ===== Ventana con la noticia completa ===== */
+  .nw { cursor: pointer; transition: border-color .15s, transform .15s; } .nw:hover { border-color: var(--subtle); } .nw:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+  body.modal-open { overflow: hidden; }
+  #nmodal { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,.65); display: grid; place-items: center; padding: 16px; overflow-y: auto; }
+  #nmodal.hidden { display: none; }
+  #nmodal .dlg { position: relative; width: 100%; max-width: 760px; max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overflow-y: auto; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 14px; }
+  #nmodal .dlg img.full { display: block; width: 100%; height: auto; border-radius: 14px 14px 0 0; }
+  #nmodal .dlg .txt { padding: 24px 28px 28px; }
+  #nmodal h2 { font-size: 24px; font-weight: 500; letter-spacing: -.01em; line-height: 1.25; margin: 4px 0 14px; }
+  #nmodal .cuerpo { font-size: 15px; line-height: 1.7; color: var(--muted); margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
+  #nmodal .fecha { margin-top: 18px; font-size: 12px; color: var(--subtle); }
+  #nmodal .x { position: absolute; top: 10px; right: 10px; z-index: 2; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border); background: var(--bg); color: var(--fg); font-size: 20px; line-height: 1; cursor: pointer; display: grid; place-items: center; }
+  #nmodal .x:hover { background: var(--surface-hover); }
+  @media (max-width: 600px) { #nmodal { padding: 8px; } #nmodal .dlg .txt { padding: 18px 18px 22px; } #nmodal h2 { font-size: 20px; } }
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
   body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; background: var(--bg); color: var(--fg);
@@ -215,6 +229,7 @@
   <div id="g-actions"></div>
   <div class="gmsg" id="g-msg" role="alert"></div>
 </div></div>
+<div id="nmodal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="nm-title"></div>
 <main>
   <div class="hero" id="hero">
     <div class="clip"><div class="px" id="px" aria-hidden="true"><div class="px-g" id="pxg"></div></div></div>
@@ -401,10 +416,35 @@
     if (!c.news.length) { box.appendChild(h('p', { class: 'empty' }, 'Aún no hay noticias destacadas.')); return; }
     c.news.slice(0, 2).forEach(function (n) {
       var img = PX.mediaUrl(CFG, n.image_path);
-      box.appendChild(h('article', { class: 'box nw' },
+      var card = h('article', { class: 'box nw', tabindex: '0', role: 'button', 'aria-label': 'Abrir noticia: ' + PX.stripRich(n.title) },
         h('div', { class: 'img' + (img ? '' : ' empty') }, img ? h('img', { src: img, alt: '' }) : h('img', { class: 'ph', src: 'icon.png', alt: '' })),
-        h('div', { class: 'b' }, h('p', { class: 'eyebrow' }, n.category), h('h3', null, PX.rich(n.title)), h('p', null, PX.rich(n.body)), h('div', { class: 'd' }, fmtDate(n.published_on)))));
+        h('div', { class: 'b' }, h('p', { class: 'eyebrow' }, n.category), h('h3', null, PX.rich(n.title)), h('p', null, PX.rich(n.body)), h('div', { class: 'd' }, fmtDate(n.published_on))));
+      card.onclick = function () { openNews(n, img, card); };
+      card.onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openNews(n, img, card); } };
+      box.appendChild(card);
     });
+  }
+
+  /* Ventana con la noticia completa (todo con createElement/textContent) */
+  var lastFocus = null;
+  function closeNews() {
+    var m = $('nmodal'); m.classList.add('hidden'); m.textContent = ''; document.body.classList.remove('modal-open');
+    document.removeEventListener('keydown', onModalKey); if (lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+  function onModalKey(e) {
+    if (e.key === 'Escape') return closeNews();
+    if (e.key === 'Tab') { var x = $('nmodal').querySelector('.x'); e.preventDefault(); x.focus(); } // el único control es Cerrar
+  }
+  function openNews(n, img, from) {
+    var m = $('nmodal'); lastFocus = from; m.textContent = '';
+    var x = h('button', { class: 'x', type: 'button', 'aria-label': 'Cerrar' }, '×'); x.onclick = closeNews;
+    var t = h('h2', { id: 'nm-title' }, PX.rich(n.title));
+    var dlg = h('div', { class: 'dlg' }, x,
+      img ? h('img', { class: 'full', src: img, alt: '' }) : null,
+      h('div', { class: 'txt' }, n.category ? h('p', { class: 'eyebrow' }, n.category) : null, t, h('p', { class: 'cuerpo' }, PX.rich(n.body)), h('div', { class: 'fecha' }, fmtDate(n.published_on))));
+    m.onclick = function (e) { if (e.target === m) closeNews(); };
+    m.appendChild(dlg); m.classList.remove('hidden'); document.body.classList.add('modal-open');
+    document.addEventListener('keydown', onModalKey); x.focus();
   }
 
   /* Calendario: cumpleaños (se repiten cada año por mes/día) y eventos con fecha */

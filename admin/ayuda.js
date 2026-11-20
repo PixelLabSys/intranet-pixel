@@ -3,6 +3,8 @@
    (formato AAAA-MM-DD-n) y sube ?v= de ayuda.js en admin/index.html. Al abrir Ayuda se apaga el círculo rojo. */
 window.PX_AYUDA = {
   novedades: [
+    { id: '2026-11-20-5', fecha: '2026-11-20', titulo: 'Las noticias se abren completas en la intranet',
+      items: ['Al hacer clic en una noticia o anuncio de la intranet se abre una ventana con la imagen y el texto completos. Se cierra con la X, con Esc o haciendo clic fuera.'] },
     { id: '2026-11-20-4', fecha: '2026-11-20', titulo: 'Centro de ayuda',
       items: ['Nuevo módulo Ayuda al final del menú: aquí ves las novedades de la plataforma y el manual de uso.', 'Cuando haya novedades sin leer verás un círculo rojo con su cantidad junto a Ayuda.'] },
     { id: '2026-11-20-3', fecha: '2026-11-20', titulo: 'La intranet ahora pide entrar con Google',
