@@ -25,3 +25,11 @@ Activar Google (una sola vez):
 4. Redesplegar la función: `supabase functions deploy invite_admin`.
 
 Límite: quien entra por Google solo pasa si su correo está en `admins`; cualquier otra cuenta ve "Sin acceso".
+
+## Acceso restringido a la organización (2026-11-20, ADR-003)
+1. SQL Editor: ejecutar `supabase/produccion/2026-11-20_acceso_organizacion.sql` (y antes `2026-11-20_service_admins.sql` si no se ejecutó).
+2. Publicar el frontend (la intranet ahora pide Google).
+3. Authentication → Hooks → "Before User Created" → tipo Postgres function → `public.hook_before_user_created` → activar.
+4. Authentication → Sign In / Providers → "Allow new users to sign up": ACTIVADO (el hook rechaza a quien no esté autorizado).
+5. Confirmar que "Confirm email" esté activado en el proveedor Email.
+6. Backoffice → Accesos: administrar dominios y correos individuales.

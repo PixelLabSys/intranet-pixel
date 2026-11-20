@@ -99,7 +99,7 @@
     armIdle();
     var main = h('main'), tabs = [
       ['banner', 'Banner', 'image'], ['menus', 'Menús', 'menu'], ['noticias', 'Noticias', 'megaphone'],
-      ['calendario', 'Calendario', 'calendar'], ['herramientas', 'Herramientas', 'gear'], ['admins', 'Administradores', 'shield']
+      ['calendario', 'Calendario', 'calendar'], ['herramientas', 'Herramientas', 'gear'], ['accesos', 'Accesos', 'users'], ['admins', 'Administradores', 'shield']
     ], btns = {};
     var aside = h('aside', null, logos());
     tabs.forEach(function (t) {
@@ -122,7 +122,7 @@
     function go(k) {
       current = k; Object.keys(btns).forEach(function (x) { btns[x].classList.toggle('on', x === k); });
       main.textContent = '';
-      var mods = { banner: modBanner, menus: modMenus, noticias: modNews, calendario: modCalendar, herramientas: modTools, admins: modAdmins };
+      var mods = { banner: modBanner, menus: modMenus, noticias: modNews, calendario: modCalendar, herramientas: modTools, accesos: modAccess, admins: modAdmins };
       mods[k] ? mods[k](main, user) : modSoon(main, k);
     }
     show(h('div', { class: 'shell' }, aside, main));
@@ -832,6 +832,47 @@
       formBox.firstChild.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
     load();
+  }
+
+  /* ---------------- Accesos: quién puede ver la intranet ---------------- */
+  async function modAccess(root, me) {
+    root.append(h('p', { class: 'eyebrow' }, 'Acceso'), h('h1', null, 'Quién puede ver la intranet'),
+      h('p', { class: 'sub' }, 'Entra con Google quien tenga un correo de estos dominios o esté en la lista de correos. Los administradores siempre pueden entrar.'));
+    var out = h('div');
+    function block(title, table, col, ph, hint, normalize, valid) {
+      var box = h('div', { class: 'box' }), inp = h('input', { type: 'text', placeholder: ph }), add = h('button', { class: 'b pri', type: 'button' }, 'Agregar');
+      var list = h('div');
+      add.onclick = async function () {
+        var v = normalize(inp.value); if (!v) return;
+        if (!valid(v)) return setMsg(out, 'err', 'Eso no parece válido: ' + hint);
+        busy(add, true);
+        var o = {}; o[col] = v; o.added_by = me.id;
+        var r = await sb.from(table).insert(o); busy(add, false);
+        if (r.error) return setMsg(out, 'err', /duplicate|23505/.test(r.error.message + r.error.code) ? 'Ya estaba en la lista.' : /check|23514/.test(r.error.message + r.error.code) ? 'Ese valor no se puede autorizar (por ejemplo gmail.com completo).' : friendly(r.error));
+        inp.value = ''; setMsg(out, 'ok', 'Agregado: ' + v); load();
+      };
+      box.append(h('h2', null, title), h('p', { class: 'sub' }, hint), h('div', { class: 'row' }, h('div', { class: 'grow' }, inp), add), list);
+      async function load() {
+        var r = await sb.from(table).select(col + ',created_at').order(col); list.textContent = '';
+        if (r.error) return list.append(msg('err', friendly(r.error)));
+        if (!r.data.length) list.append(h('p', { class: 'sub' }, 'Todavía no hay ninguno.'));
+        r.data.forEach(function (x) {
+          var del = h('button', { class: 'b dng', type: 'button' }, 'Quitar');
+          del.onclick = async function () {
+            if (!confirm('¿Quitar ' + x[col] + '? Quien entre solo por esto dejará de ver la intranet.')) return;
+            var d = await sb.from(table).delete().eq(col, x[col]); if (d.error) return setMsg(out, 'err', friendly(d.error)); setMsg(out, 'ok', 'Quitado: ' + x[col]); load();
+          };
+          list.append(h('div', { class: 'row' }, h('div', { class: 'grow' }, x[col]), del));
+        });
+      }
+      load(); return box;
+    }
+    root.append(
+      block('Dominios de la empresa', 'access_domains', 'domain', 'ejemplo.com', 'Todos los correos de ese dominio (por ejemplo pixel-g.com). No se admiten Gmail, Hotmail ni similares.',
+        function (v) { return v.trim().toLowerCase().replace(/^@/, ''); }, function (v) { return /^[a-z0-9]([a-z0-9.-]*[a-z0-9])?\.[a-z]{2,}$/.test(v); }),
+      block('Correos individuales', 'access_emails', 'email', 'persona@gmail.com', 'Para personas con correo externo (por ejemplo un Gmail) que sí deben entrar.',
+        function (v) { return v.trim().toLowerCase(); }, function (v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) && v.length <= 254; }),
+      out);
   }
 
   /* ---------------- Administradores ---------------- */

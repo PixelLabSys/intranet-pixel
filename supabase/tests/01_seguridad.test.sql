@@ -1,11 +1,16 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(48);
+select plan(57);
 
 -- Datos de prueba (como postgres; el seed ya cargó contenido)
-insert into auth.users (id, aud, role, email) values
-  ('aaaaaaaa-0000-4000-8000-000000000001', 'authenticated', 'authenticated', 'admin@pixel.test'),
-  ('bbbbbbbb-0000-4000-8000-000000000002', 'authenticated', 'authenticated', 'persona@pixel.test');
+insert into auth.users (id, aud, role, email, email_confirmed_at) values
+  ('aaaaaaaa-0000-4000-8000-000000000001', 'authenticated', 'authenticated', 'admin@pixel.test', now()),
+  ('bbbbbbbb-0000-4000-8000-000000000002', 'authenticated', 'authenticated', 'persona@pixel.test', now()),
+  ('bbbbbbbb-0000-4000-8000-000000000003', 'authenticated', 'authenticated', 'miembro@pixel-g.com', now()),
+  ('bbbbbbbb-0000-4000-8000-000000000004', 'authenticated', 'authenticated', 'listado@gmail.com', now()),
+  ('bbbbbbbb-0000-4000-8000-000000000005', 'authenticated', 'authenticated', 'sinconfirmar@pxl-g.com', null),
+  ('bbbbbbbb-0000-4000-8000-000000000006', 'authenticated', 'authenticated', 'otro@gmail.com', now());
+insert into public.access_emails (email) values ('listado@gmail.com');
 insert into public.admins (user_id, email) values ('aaaaaaaa-0000-4000-8000-000000000001', 'admin@pixel.test');
 insert into public.news (id, title, status) values ('cccccccc-0000-4000-8000-00000000000a', 'Borrador oculto', 'draft');
 insert into public.menu_items (id, zone, label, kind, target, visible) values
@@ -19,13 +24,11 @@ insert into public.events (title, type, person_name, event_month, event_day, vis
 set local role anon;
 select set_config('request.jwt.claims', '{"role":"anon"}', true);
 
-select is((select count(*)::int from public.news where status <> 'published'), 0, 'anon: no ve borradores');
-select is((select count(*)::int from public.news), 2, 'anon: ve las 2 noticias publicadas');
-select is((select count(*)::int from public.menu_items where label = 'Hijo de oculto'), 0, 'anon: no ve submenú cuyo padre está oculto');
-select is((select count(*)::int from public.events where person_name = 'Persona Oculta'), 0, 'anon: no ve cumpleaños oculto');
-select is((select count(*)::int from public.events where person_name = 'Laura'), 1, 'anon: ve cumpleaños visible');
-select throws_ok($$ select updated_at from public.news $$, '42501', null, 'anon: no puede leer columnas internas (updated_at)');
-select throws_ok($$ select * from public.news $$, '42501', null, 'anon: select * falla (obliga a columnas explícitas)');
+select throws_ok($$ select id from public.news $$, '42501', null, 'anon: no lee noticias (la intranet exige login)');
+select throws_ok($$ select id from public.menu_items $$, '42501', null, 'anon: no lee menús');
+select throws_ok($$ select id from public.events $$, '42501', null, 'anon: no lee eventos');
+select throws_ok($$ select * from public.tools $$, '42501', null, 'anon: no lee herramientas');
+select throws_ok($$ select * from public.site_settings $$, '42501', null, 'anon: no lee ajustes');
 select throws_ok($$ select * from public.admins $$, '42501', null, 'anon: no lee admins');
 select throws_ok($$ select * from public.audit_log $$, '42501', null, 'anon: no lee audit_log');
 select throws_ok($$ insert into public.tools (category_id, name, url) values ('00000000-0000-4000-8000-000000000001','x','https://x.co') $$, '42501', null, 'anon: no inserta tools');
@@ -47,6 +50,23 @@ select throws_ok($$ select public.set_featured('cccccccc-0000-4000-8000-00000000
 select is((select count(*)::int from public.admins), 0, 'no-admin: no ve la tabla admins');
 select is((select count(*)::int from public.news where status = 'draft'), 0, 'no-admin: no ve borradores');
 select throws_ok($$ insert into storage.objects (bucket_id, name) values ('media', 'x.png') $$, '42501', null, 'no-admin: no sube a storage');
+
+-- ===================== MIEMBROS (dominio, correo listado) y NO miembros =====================
+select set_config('request.jwt.claims', '{"sub":"bbbbbbbb-0000-4000-8000-000000000003","role":"authenticated"}', true);
+select is((select count(*)::int from public.news), 2, 'miembro @pixel-g.com: ve las 2 noticias publicadas y ningún borrador');
+select is((select count(*)::int from public.access_domains), 0, 'miembro: no ve la lista de dominios');
+select throws_ok($$ insert into public.access_domains (domain) values ('evil.com') $$, '42501', null, 'miembro: no agrega dominios');
+select throws_ok($$ select public.email_allowed('a@pixel-g.com') $$, '42501', null, 'miembro: no ejecuta email_allowed');
+select set_config('request.jwt.claims', '{"sub":"bbbbbbbb-0000-4000-8000-000000000004","role":"authenticated"}', true);
+select is((select count(*)::int from public.news), 2, 'gmail de la lista: ve el contenido');
+select set_config('request.jwt.claims', '{"sub":"bbbbbbbb-0000-4000-8000-000000000006","role":"authenticated"}', true);
+select is((select count(*)::int from public.news), 0, 'gmail fuera de la lista: no ve nada');
+select set_config('request.jwt.claims', '{"sub":"bbbbbbbb-0000-4000-8000-000000000005","role":"authenticated"}', true);
+select is((select count(*)::int from public.news), 0, 'dominio autorizado pero correo sin confirmar: no ve nada');
+reset role;
+select is(public.hook_before_user_created('{"user":{"email":"Nuevo@PIXEL-G.com"}}'::jsonb), '{}'::jsonb, 'filtro de registro: deja pasar un correo del dominio');
+select is((public.hook_before_user_created('{"user":{"email":"x@gmail.com"}}'::jsonb)->'error'->>'http_code'), '403', 'filtro de registro: rechaza un Gmail no listado');
+set local role authenticated;
 
 -- ===================== ADMIN SIN MFA (aal1): desde la migración 5 la verificación en dos pasos ya no se exige =====================
 select set_config('request.jwt.claims', '{"sub":"aaaaaaaa-0000-4000-8000-000000000001","role":"authenticated","aal":"aal1"}', true);
@@ -83,6 +103,9 @@ select lives_ok($$ select public.set_featured('cccccccc-0000-4000-8000-000000000
 select is((select count(*)::int from public.news where featured_order is not null), 2, 'destacadas: siguen siendo exactamente 2');
 select lives_ok($$ update public.news set status = 'draft' where id = 'cccccccc-0000-4000-8000-00000000000a' $$, 'admin: despublica la destacada');
 select is((select featured_order from public.news where id = 'cccccccc-0000-4000-8000-00000000000a'), null, 'destacadas: despublicar libera el cupo');
+
+select lives_ok($$ insert into public.access_domains (domain) values ('nuevo-dominio.com') $$, 'admin: agrega un dominio');
+select throws_ok($$ insert into public.access_domains (domain) values ('gmail.com') $$, '23514', null, 'admin: no puede autorizar gmail.com completo');
 
 -- último admin
 select throws_ok($$ select public.remove_admin('aaaaaaaa-0000-4000-8000-000000000001') $$, 'P0001', null, 'admins: no se puede quitar al último');

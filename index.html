@@ -29,6 +29,21 @@
     --muted: #b8b2a8;  --subtle: #8b8579;
     --chip: #1d2733;  --icon-muted: #5f6b78;
   }
+  /* ===== Acceso: la intranet solo se ve con sesión autorizada ===== */
+  body.gated > main, body.gated > footer { display: none; }
+  body:not(.gated) #gate { display: none; }
+  #gate { flex: 1; min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+  #gate .gcard { width: 100%; max-width: 400px; padding: 32px 28px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); text-align: center; }
+  #gate .gcard .logo { height: 22px; margin: 0 auto 24px; }
+  #gate .gcard .logo-oscuro { display: block; } #gate .gcard .logo-claro { display: none; }
+  .dark #gate .gcard .logo-claro { display: block; } .dark #gate .gcard .logo-oscuro { display: none; }
+  #gate h1 { font-size: 22px; font-weight: 500; margin: 0 0 8px; letter-spacing: -.01em; }
+  #gate p { color: var(--muted); font-size: 14px; margin: 0 0 20px; line-height: 1.5; }
+  #gate button { font: inherit; font-weight: 500; width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--fg); background: var(--fg); color: var(--bg); cursor: pointer; }
+  #gate button.sec { background: transparent; color: var(--fg); border-color: var(--border); margin-top: 10px; }
+  #gate button:hover { opacity: .88; } #gate button:disabled { opacity: .5; cursor: default; }
+  #gate .gmsg { margin-top: 14px; font-size: 13px; color: #b3382c; } .dark #gate .gmsg { color: #e06a5c; }
+  .logout { width: auto; padding: 0 12px; font: inherit; font-size: 12px; }
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
   body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; background: var(--bg); color: var(--fg);
@@ -184,7 +199,14 @@
   }
 </style>
 </head>
-<body>
+<body class="gated">
+<div id="gate"><div class="gcard">
+  <img class="logo logo-claro" src="logo-claro.png" alt="Pixel Graphic"><img class="logo logo-oscuro" src="logo-oscuro.png" alt="Pixel Graphic">
+  <h1 id="g-title">Intranet Pixel</h1>
+  <p id="g-text">Cargando…</p>
+  <div id="g-actions"></div>
+  <div class="gmsg" id="g-msg" role="alert"></div>
+</div></div>
 <main>
   <div class="hero" id="hero">
     <div class="clip"><div class="px" id="px" aria-hidden="true"><div class="px-g" id="pxg"></div></div></div>
@@ -195,6 +217,7 @@
         <ul class="links" id="topnav"></ul>
         <div class="right">
           <button class="iconbtn theme" id="theme" aria-label="Cambiar tema"></button>
+          <button class="iconbtn logout hidden" id="logout" type="button">Salir</button>
           <button class="iconbtn menu-btn" id="menubtn" aria-label="Abrir menú" aria-expanded="false"></button>
         </div>
       </nav>
@@ -237,12 +260,11 @@
   </section>
 </main>
 
-<footer><img src="pata.png" alt="Pixel Graphic — El único ecosistema integral de la región, experto en catálogos"><div id="aviso"></div></footer>
+<footer><img src="pata.png" alt="Pixel Graphic — El único ecosistema integral de la región, experto en catálogos"></footer>
 
 <script src="assets/config.js"></script>
 <script src="assets/common.js?v=4"></script>
 <script src="assets/supabase-js-2.117.3.min.js"></script>
-<script src="assets/respaldo.js"></script>
 <script>var st = document.createElement('style'); st.textContent = PX.richCss(); document.head.appendChild(st);</script>
 <script>
 (function () {
@@ -276,19 +298,21 @@
     $('pxg').appendChild(out);
   })();
 
-  /* ---------- Carga de contenido: Supabase con timeout y respaldo ---------- */
-  function withTimeout(ms) {
-    return function (url, opts) {
-      var ac = new AbortController(), id = setTimeout(function () { ac.abort(); }, ms);
-      return fetch(url, Object.assign({}, opts, { signal: ac.signal })).finally(function () { clearTimeout(id); });
-    };
+  /* ---------- Acceso y carga de contenido ---------- */
+  var sb = null;
+  function gate(title, text, buttons, err) {
+    document.body.classList.add('gated');
+    $('g-title').textContent = title; $('g-text').textContent = text; $('g-msg').textContent = err || '';
+    var box = $('g-actions'); box.textContent = '';
+    buttons.forEach(function (b) { var x = h('button', { type: 'button', class: b.sec ? 'sec' : '' }, b.label); x.onclick = b.fn; box.appendChild(x); });
   }
+  function loginGate(err) {
+    gate('Intranet Pixel', 'Entra con tu cuenta de Google de la empresa.', [{ label: 'Continuar con Google', fn: function () {
+      sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname } }).then(function (r) { if (r.error) loginGate('No se pudo iniciar con Google. Intenta de nuevo.'); });
+    } }], err);
+  }
+  function signOut() { sb.auth.signOut().then(function () { location.reload(); }); }
   async function loadLive() {
-    if (!CFG || !CFG.url || !CFG.anonKey || !window.supabase) throw new Error('sin configuración');
-    var sb = supabase.createClient(CFG.url, CFG.anonKey, {
-      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-      global: { fetch: withTimeout(4000) }
-    });
     var r = await Promise.all([
       sb.from('site_settings').select('key,value'),
       sb.from('menu_items').select('id,parent_id,zone,label,kind,target,tool_id,icon,position').order('position'),
@@ -460,17 +484,26 @@
     qi.oninput = filtra;
   }
 
-  function renderAll(c, fromBackup) {
+  function renderAll(c) {
     events = c.events || []; renderBanner(c); renderMenus(c); renderNews(c); renderCal(); renderTools(c);
-    $('aviso').textContent = fromBackup ? 'Mostrando contenido guardado (sin conexión con el servidor).' : '';
+    document.body.classList.remove('gated'); $('logout').classList.remove('hidden'); $('logout').onclick = signOut;
   }
 
-  var cacheBackup = window.PX_RESPALDO;
-  var cap = new Promise(function (_, rej) { setTimeout(function () { rej(new Error('tiempo agotado (4 s)')); }, 4000); });
-  Promise.race([loadLive(), cap]).then(function (c) { renderAll(c, false); }).catch(function (e) {
-    if (window.console) console.warn('Intranet: usando respaldo —', e && e.message ? e.message : e);
-    renderAll(cacheBackup, true);
-  });
+  async function init() {
+    if (!CFG || !CFG.url || !CFG.anonKey || !window.supabase) return gate('Intranet Pixel', 'La intranet no está configurada.', []);
+    sb = supabase.createClient(CFG.url, CFG.anonKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+    var oauthErr = /error_description|[?#&]error=/.test(location.hash + location.search);
+    if (oauthErr) { history.replaceState(null, '', location.pathname); return loginGate('Esa cuenta no está autorizada. Entra con tu correo de la empresa o pide que te agreguen.'); }
+    var ses = (await sb.auth.getSession()).data.session;
+    if (!ses) return loginGate('');
+    var mem = await sb.rpc('is_member');
+    if (mem.error || mem.data !== true) return gate('Sin acceso', 'La cuenta ' + (ses.user.email || '') + ' no está autorizada para ver la intranet.', [{ label: 'Entrar con otra cuenta', fn: signOut }]);
+    gate('Intranet Pixel', 'Cargando…', []);
+    var cap = new Promise(function (_, rej) { setTimeout(function () { rej(new Error('tiempo agotado')); }, 8000); });
+    try { renderAll(await Promise.race([loadLive(), cap])); }
+    catch (e) { if (window.console) console.warn('Intranet:', e && e.message ? e.message : e); gate('No pudimos cargar', 'Revisa tu conexión e intenta de nuevo.', [{ label: 'Reintentar', fn: function () { location.reload(); } }, { label: 'Salir', sec: true, fn: signOut }]); }
+  }
+  init();
 })();
 </script>
 </body>
