@@ -137,16 +137,18 @@
   .news { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
   .nw { overflow: hidden; }
   /* La imagen de la noticia ya viene encuadrada (zoom y alto) desde el backoffice: se muestra completa, con su proporción. */
-  .nw { align-self: start; }
+  .nw { display: flex; flex-direction: column; }
+  .news { flex: 1; grid-auto-rows: 1fr; }
+  .two > div { display: flex; flex-direction: column; } .two > div > .box.cal { flex: 1; }
   .nw .img { background: var(--chip); border-bottom: 1px solid var(--border); line-height: 0; }
   .nw .img img { display: block; width: 100%; height: auto; }
   .nw .img.empty { height: 150px; display: grid; place-items: center; }
   .nw .img img.ph { width: 46px; }
-  .nw .b { padding: 16px 20px 20px; }
+  .nw .b { padding: 16px 20px 20px; flex: 1; display: flex; flex-direction: column; }
   .nw h3 { margin: 6px 0; font-size: 14px; font-weight: 500; line-height: 1.35; }
   .nw p.res { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; white-space: normal; }
   .nw p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.5; }
-  .nw .d { margin-top: 10px; font-family: var(--font-mono); font-size: 11px; color: var(--subtle); }
+  .nw .d { margin-top: auto; padding-top: 10px; font-family: var(--font-mono); font-size: 11px; color: var(--subtle); }
   .empty { font-size: 13px; color: var(--subtle); padding: 12px 0; }
 
   /* ===== Calendario ===== */
@@ -500,6 +502,7 @@
       g.appendChild(btn);
       list.forEach(function (e) { monthList.push({ d: d, e: e }); });
     }
+    for (var k = first + days; k < 42; k++) g.appendChild(h('div', { class: 'dy', 'aria-hidden': 'true', style: 'visibility:hidden' }, '0')); // siempre 6 semanas: el alto no salta entre meses
     var box = $('evs'); box.textContent = '';
     if (!monthList.length) { box.appendChild(h('div', { class: 'ev-none' }, 'Sin eventos este mes')); return; }
     monthList.forEach(function (x) {
