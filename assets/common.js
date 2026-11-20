@@ -101,13 +101,13 @@
       if ((m = /^\[(\/?)([lb])\]$/.exec(t))) { flush(); w = m[1] ? null : m[2]; }
       else if ((m = /^\[c:([a-z]+)\]$/.exec(t))) { flush(); c = COLORS[m[1]] ? m[1] : null; }
       else if (t === '[/c]') { flush(); c = null; }
-      else buf += t;
+      else buf += t.replace(/［/g, '[');
     });
     flush(); return frag;
   }
   function stripRich(text, which) {
     var re = which === 'w' ? /\[\/?[lb]\]/g : which === 'c' ? /\[c:[a-z]+\]|\[\/c\]/g : /\[\/?[lb]\]|\[c:[a-z]+\]|\[\/c\]/g;
-    return String(text || '').replace(re, '');
+    return String(text || '').replace(re, '').replace(/［/g, '[');
   }
   function richCss() {
     // Blanco y Azul navy se invierten con el tema (como el resto de textos): "blanco" = texto claro sobre fondo oscuro y oscuro sobre fondo claro; "navy", al revés.

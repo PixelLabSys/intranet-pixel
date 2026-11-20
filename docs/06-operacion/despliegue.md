@@ -1,7 +1,7 @@
 # Despliegue y operación (Cortes 0–1)
 
 ## Poner en producción (cuando exista el proyecto Supabase)
-1. Crear proyecto en Supabase; en Auth: desactivar "Allow new users to sign up", activar MFA (TOTP), Site URL y Redirect URLs = `https://pixellabsys.github.io/intranet-pixel/admin/`.
+1. Crear proyecto en Supabase; en Auth: desactivar "Allow new users to sign up", Site URL y Redirect URLs = `https://pixellabsys.github.io/intranet-pixel/admin/`.
 2. `supabase link` + `supabase db push` (migraciones), ejecutar `supabase/seed.sql`.
 3. `supabase secrets set ADMIN_URL=https://pixellabsys.github.io/intranet-pixel/admin/` y `supabase functions deploy invite_admin`.
 4. Crear el primer usuario (Auth → Invite) y ejecutar `supabase/bootstrap_primer_admin.sql` con su correo. Repetir para el segundo administrador (mínimo 2).

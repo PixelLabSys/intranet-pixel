@@ -1,4 +1,4 @@
-/* Backoffice Pixel — Corte 1: acceso (contraseña + MFA), Banner, Menús, Administradores.
+/* Backoffice Pixel — Corte 1: acceso (correo y contraseña), Banner, Menús, Administradores.
    Todo el contenido dinámico se pinta con createElement/textContent (PX.h). La seguridad real vive en las políticas RLS. */
 (function () {
   'use strict';
@@ -28,9 +28,6 @@
     var s = (await sb.auth.getSession()).data.session;
     if (!s) return viewLogin();
     if (needPassword) return viewSetPassword();
-    var aal = (await sb.auth.mfa.getAuthenticatorAssuranceLevel()).data;
-    if (aal && aal.currentLevel === 'aal1' && aal.nextLevel === 'aal2') return viewMfaVerify();
-    if (aal && aal.currentLevel === 'aal1') return viewMfaEnroll();
     var uid = s.user.id;
     var adm = await sb.from('admins').select('user_id').eq('user_id', uid).maybeSingle();
     if (!adm.data) return viewNoAdmin();
@@ -72,49 +69,6 @@
       needPassword = false; history.replaceState(null, '', location.pathname); start();
     };
     show(center(card(f)));
-  }
-
-  async function viewMfaEnroll() {
-    // Limpia factores sin verificar de intentos previos para poder inscribir uno nuevo.
-    var lf = await sb.auth.mfa.listFactors();
-    var stale = ((lf.data && lf.data.all) || []).filter(function (x) { return x.factor_type === 'totp' && x.status === 'unverified'; });
-    for (var i = 0; i < stale.length; i++) await sb.auth.mfa.unenroll({ factorId: stale[i].id });
-    var en = await sb.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'Backoffice' });
-    if (en.error) return show(center(card(msg('err', friendly(en.error)))));
-    var factorId = en.data.id, out = h('div');
-    var code = h('input', { type: 'text', inputmode: 'numeric', autocomplete: 'one-time-code', maxlength: 6, pattern: '[0-9]{6}', required: true });
-    var btn = h('button', { class: 'b pri full', type: 'submit' }, 'Activar');
-    var img = h('img', { class: 'qr', alt: 'Código QR para tu app de autenticación', src: en.data.totp.qr_code });
-    var f = h('form', null, h('h1', null, 'Activa la verificación en dos pasos'),
-      h('p', null, 'Escanea este código con Google Authenticator, Authy o similar, y escribe los 6 dígitos que te muestre.'), img,
-      h('p', { class: 'eyebrow' }, 'Si no puedes escanear, clave manual:'), h('code', null, en.data.totp.secret), field('Código de 6 dígitos', code), btn, out);
-    f.onsubmit = async function (e) {
-      e.preventDefault(); busy(btn, true);
-      var r = await sb.auth.mfa.challengeAndVerify({ factorId: factorId, code: code.value.trim() });
-      busy(btn, false);
-      if (r.error) return setMsg(out, 'err', 'Código incorrecto. Revisa la hora de tu teléfono e inténtalo otra vez.');
-      start();
-    };
-    show(center(card(f)));
-  }
-
-  async function viewMfaVerify() {
-    var lf = await sb.auth.mfa.listFactors();
-    var fac = lf.data && lf.data.totp && lf.data.totp[0];
-    if (!fac) return viewMfaEnroll();
-    var code = h('input', { type: 'text', inputmode: 'numeric', autocomplete: 'one-time-code', maxlength: 6, pattern: '[0-9]{6}', required: true });
-    var out = h('div'), btn = h('button', { class: 'b pri full', type: 'submit' }, 'Verificar');
-    var out2 = h('button', { class: 'link', type: 'button' }, 'Cancelar y salir'); out2.onclick = logout;
-    var f = h('form', null, h('h1', null, 'Verificación en dos pasos'), field('Código de tu app de autenticación', code), btn, out, out2);
-    f.onsubmit = async function (e) {
-      e.preventDefault(); busy(btn, true);
-      var r = await sb.auth.mfa.challengeAndVerify({ factorId: fac.id, code: code.value.trim() });
-      busy(btn, false);
-      if (r.error) return setMsg(out, 'err', 'Código incorrecto o vencido.');
-      start();
-    };
-    show(center(card(f)));
-    code.focus();
   }
 
   function viewNoAdmin() {
@@ -160,35 +114,138 @@
   }
   function modSoon(root, k) { root.append(h('h1', null, 'Próximamente'), h('p', { class: 'soon' }, 'Este módulo se activa en un corte posterior, cuando valides el actual.')); }
 
-  /* Campo de texto con barra de peso y color + vista previa (compartido por Banner y Noticias). */
-  function weightField(label, input) {
-    var prev = h('div', { class: 'rp' });
-    function upd() { prev.textContent = ''; prev.appendChild(PX.rich(input.value)); if (!input.value) prev.textContent = 'Vista previa'; }
-    // Aplica a la selección: quita solo las marcas del mismo tipo (peso o color) y pone la nueva.
-    function apply(which, open, close) {
-      var a = input.selectionStart, b = input.selectionEnd; if (a === b) { return; }
-      var sel = PX.stripRich(input.value.slice(a, b), which);
-      var rep = open ? open + sel + close : sel;
-      input.value = input.value.slice(0, a) + rep + input.value.slice(b);
-      input.focus(); input.setSelectionRange(a, a + rep.length); upd();
+  /* Editor de texto en vivo (sin códigos): se escribe y se da formato sobre el propio texto, que se ve como quedará en la intranet.
+     Internamente se guarda con marcas [l] [b] [c:color] (formato que ya entiende la intranet), pero el usuario nunca las ve.
+     richEditor(inicial, { maxText, dbMax, style, tall, placeholder }) -> { node, value (get/set), tooLong(), focus() } */
+  function richEditor(initial, opts) {
+    opts = opts || {};
+    var el = h('div', { class: 'rte' + (opts.tall ? ' tall' : ''), contenteditable: 'true', role: 'textbox', 'aria-multiline': 'false', spellcheck: 'true', 'data-ph': opts.placeholder || '', style: opts.style || '' });
+    var lastSel = null, ed = { node: el };
+    function parse(str) {
+      var runs = [], w = null, c = null;
+      String(str || '').split(/(\[\/?[lb]\]|\[c:[a-z]+\]|\[\/c\])/).forEach(function (t) {
+        var m;
+        if ((m = /^\[(\/?)([lb])\]$/.exec(t))) w = m[1] ? null : m[2];
+        else if ((m = /^\[c:([a-z]+)\]$/.exec(t))) c = PX.COLORS[m[1]] ? m[1] : null;
+        else if (t === '[/c]') c = null;
+        else if (t) runs.push({ t: t.replace(/［/g, '['), w: w, c: c });
+      });
+      return runs;
     }
+    function merge(runs) {
+      var out = [];
+      runs.forEach(function (r) { if (!r.t) return; var l = out[out.length - 1]; if (l && l.w === r.w && l.c === r.c) l.t += r.t; else out.push({ t: r.t, w: r.w, c: r.c }); });
+      return out;
+    }
+    function render(runs) {
+      el.textContent = '';
+      merge(runs).forEach(function (r) {
+        if (r.w || r.c) el.appendChild(h('span', { class: (r.w ? 'w-' + r.w : '') + (r.w && r.c ? ' ' : '') + (r.c ? 'c-' + r.c : '') }, r.t));
+        else el.appendChild(document.createTextNode(r.t));
+      });
+    }
+    function domRuns() {
+      var runs = [];
+      (function walk(node, w, c) {
+        node.childNodes.forEach(function (n) {
+          if (n.nodeType === 3) { runs.push({ t: n.nodeValue.replace(/ /g, ' ').replace(/[\r\n]+/g, ' '), w: w, c: c }); return; }
+          if (n.nodeType !== 1 || n.nodeName === 'BR') return;
+          var w2 = n.classList.contains('w-l') ? 'l' : n.classList.contains('w-b') ? 'b' : w, c2 = c;
+          Object.keys(PX.COLORS).forEach(function (k) { if (n.classList.contains('c-' + k)) c2 = k; });
+          walk(n, w2, c2);
+        });
+      })(el, null, null);
+      return runs;
+    }
+    function textLen() { return domRuns().reduce(function (n, r) { return n + r.t.length; }, 0); }
+    function serialize() {
+      return merge(domRuns()).map(function (r) {
+        var t = r.t.replace(/\[(\/?[lb]|\/c|c:[a-z]+)\]/g, function (m) { return '［' + m.slice(1); }); // un "[b]" escrito a mano no debe contar como formato
+        if (r.w) t = '[' + r.w + ']' + t + '[/' + r.w + ']';
+        if (r.c) t = '[c:' + r.c + ']' + t + '[/c]';
+        return t;
+      }).join('');
+    }
+    function getSel() {
+      var s = window.getSelection(); if (!s.rangeCount) return null;
+      var r = s.getRangeAt(0); if (!el.contains(r.startContainer) || !el.contains(r.endContainer)) return null;
+      var pre = document.createRange(); pre.selectNodeContents(el); pre.setEnd(r.startContainer, r.startOffset); var a = pre.toString().length;
+      pre.setEnd(r.endContainer, r.endOffset); return [a, pre.toString().length];
+    }
+    function setSel(a, b) {
+      var r = document.createRange(), pos = 0, started = false, ended = false, last = null;
+      (function walk(node) {
+        node.childNodes.forEach(function (n) {
+          if (ended) return;
+          if (n.nodeType === 3) {
+            var len = n.nodeValue.length; last = n;
+            if (!started && a <= pos + len) { r.setStart(n, a - pos); started = true; }
+            if (started && b <= pos + len) { r.setEnd(n, b - pos); ended = true; }
+            pos += len;
+          } else if (n.nodeType === 1) walk(n);
+        });
+      })(el);
+      if (!started) { r.selectNodeContents(el); r.collapse(false); } else if (!ended) { r.setEnd(last, last.nodeValue.length); }
+      var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+    }
+    function remember() { var s = getSel(); if (s) lastSel = s; }
+    ed.apply = function (kind, val) { // kind: 'w' (peso) o 'c' (color); val: 'l' | 'b' | clave de color | null (quitar)
+      var sel = getSel() || lastSel; if (!sel || sel[0] === sel[1]) { ed.hint && ed.hint('Primero selecciona el texto al que quieres dar formato.'); return; }
+      ed.hint && ed.hint('');
+      var a = sel[0], b = sel[1], pos = 0, out = [];
+      domRuns().forEach(function (r) {
+        var s0 = pos, e0 = pos + r.t.length; pos = e0;
+        if (e0 <= a || s0 >= b) { out.push(r); return; }
+        var i1 = Math.max(a, s0) - s0, i2 = Math.min(b, e0) - s0;
+        if (i1 > 0) out.push({ t: r.t.slice(0, i1), w: r.w, c: r.c });
+        var mid = { t: r.t.slice(i1, i2), w: r.w, c: r.c }; mid[kind] = val; out.push(mid);
+        if (i2 < r.t.length) out.push({ t: r.t.slice(i2), w: r.w, c: r.c });
+      });
+      render(out); el.focus(); setSel(a, b); lastSel = [a, b];
+    };
+    el.addEventListener('beforeinput', function (e) {
+      if (/^insertParagraph|^insertLineBreak/.test(e.inputType)) { e.preventDefault(); return; }       // una sola línea
+      if (/^format/.test(e.inputType)) { e.preventDefault(); return; }                                  // sin negrita/cursiva nativas
+      if (opts.maxText && /^insert/.test(e.inputType) && e.inputType !== 'insertFromPaste' && textLen() >= opts.maxText) { var s = getSel(); if (!s || s[0] === s[1]) e.preventDefault(); }
+    });
+    el.addEventListener('paste', function (e) { // siempre texto plano
+      e.preventDefault();
+      var t = ((e.clipboardData || window.clipboardData).getData('text') || '').replace(/\s+/g, ' ');
+      if (opts.maxText) { var s = getSel(), sel = s ? s[1] - s[0] : 0; t = t.slice(0, Math.max(0, opts.maxText - textLen() + sel)); }
+      if (t) document.execCommand('insertText', false, t);
+    });
+    el.addEventListener('drop', function (e) { e.preventDefault(); });
+    el.addEventListener('keydown', function (e) {
+      if ((e.metaKey || e.ctrlKey) && /^[biu]$/i.test(e.key)) { e.preventDefault(); if (/b/i.test(e.key)) ed.apply('w', 'b'); }
+    });
+    el.addEventListener('input', function () { if (!el.textContent) el.textContent = ''; if (opts.maxText && textLen() > opts.maxText) { var s = getSel(); render(cut(domRuns(), opts.maxText)); setSel(opts.maxText, opts.maxText); } });
+    function cut(runs, n) { var out = [], used = 0; runs.forEach(function (r) { if (used >= n) return; out.push({ t: r.t.slice(0, n - used), w: r.w, c: r.c }); used += r.t.length; }); return out; }
+    ['keyup', 'mouseup', 'touchend', 'focus', 'blur'].forEach(function (ev) { el.addEventListener(ev, remember); });
+    document.addEventListener('selectionchange', function () { if (document.activeElement === el) remember(); });
+    Object.defineProperty(ed, 'value', { get: function () { return serialize().trim(); }, set: function (v) { render(parse(v)); } });
+    ed.tooLong = function () { return !!opts.dbMax && ed.value.length > opts.dbMax; };
+    ed.value = initial;
+    return ed;
+  }
+
+  /* Campo con barra de formato (Ligero/Normal/Negrita y colores) encima del editor en vivo. */
+  function weightField(label, ed) {
+    var hint = h('span', { class: 'hint' }, 'Selecciona el texto y elige el formato');
+    ed.hint = function (t) { hint.textContent = t || 'Selecciona el texto y elige el formato'; hint.style.color = t ? 'var(--danger)' : ''; };
     var bar = h('div', { class: 'tb' }), bar2 = h('div', { class: 'tb' });
-    [['l', 'Ligero'], ['n', 'Normal'], ['b', 'Negrita']].forEach(function (x) {
-      var bt = h('button', { class: 'b', type: 'button', style: 'font-weight:' + ({ l: 300, n: 400, b: 700 })[x[0]] }, x[1]);
-      bt.onmousedown = function (e) { e.preventDefault(); };
-      bt.onclick = function () { x[0] === 'n' ? apply('w') : apply('w', '[' + x[0] + ']', '[/' + x[0] + ']'); }; bar.append(bt);
+    function keep(btn) { btn.onmousedown = function (e) { e.preventDefault(); }; btn.ontouchstart = function (e) { e.preventDefault(); btn.click(); }; return btn; }
+    [['l', 'Ligero'], [null, 'Normal'], ['b', 'Negrita']].forEach(function (x) {
+      var bt = keep(h('button', { class: 'b', type: 'button', style: 'font-weight:' + ({ l: 300, n: 400, b: 700 })[x[0] || 'n'] }, x[1]));
+      bt.onclick = function () { ed.apply('w', x[0]); }; bar.append(bt);
     });
-    bar.append(h('span', { class: 'hint' }, 'Selecciona texto y elige peso o color'));
+    bar.append(hint);
     bar2.append(h('span', { class: 'hint' }, 'Color:'));
-    var auto = h('button', { class: 'sw auto', type: 'button', title: 'Color automático', 'aria-label': 'Color automático' });
-    auto.onmousedown = function (e) { e.preventDefault(); }; auto.onclick = function () { apply('c'); }; bar2.append(auto);
+    var auto = keep(h('button', { class: 'sw auto', type: 'button', title: 'Color automático', 'aria-label': 'Color automático' })); auto.onclick = function () { ed.apply('c', null); }; bar2.append(auto);
     Object.keys(PX.COLORS).forEach(function (k) {
-      var sw = h('button', { class: 'sw', type: 'button', title: PX.COLOR_LABELS[k], 'aria-label': PX.COLOR_LABELS[k], style: 'background:' + PX.COLORS[k] });
-      sw.onmousedown = function (e) { e.preventDefault(); };
-      sw.onclick = function () { apply('c', '[c:' + k + ']', '[/c]'); }; bar2.append(sw);
+      var sw = keep(h('button', { class: 'sw', type: 'button', title: PX.COLOR_LABELS[k], 'aria-label': PX.COLOR_LABELS[k], style: 'background:' + PX.COLORS[k] }));
+      sw.onclick = function () { ed.apply('c', k); }; bar2.append(sw);
     });
-    input.addEventListener('input', upd); upd();
-    return h('div', null, h('label', null, label), bar, bar2, input, prev);
+    return h('div', null, h('label', null, label), bar, bar2, ed.node);
   }
 
   /* ---------------- Banner ---------------- */
@@ -269,9 +326,9 @@
     var file = h('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp' });
     var rm = h('button', { class: 'b dng', type: 'button' }, 'Quitar imagen'), reframe = h('button', { class: 'b', type: 'button' }, 'Reencuadrar la actual');
     var inputs = {};
-    inputs.banner_eyebrow = h('input', { type: 'text', maxlength: 160, value: (cur.banner_eyebrow && cur.banner_eyebrow.value) || '' });
-    inputs.banner_title = h('input', { type: 'text', maxlength: 160, value: (cur.banner_title && cur.banner_title.value) || '' });
-    inputs.banner_text = h('textarea', { maxlength: 500 }); inputs.banner_text.value = (cur.banner_text && cur.banner_text.value) || '';
+    inputs.banner_eyebrow = richEditor((cur.banner_eyebrow && cur.banner_eyebrow.value) || '', { maxText: 60, dbMax: 500, placeholder: 'Línea superior', style: 'font-size:11px;text-transform:uppercase;letter-spacing:.08em' });
+    inputs.banner_title = richEditor((cur.banner_title && cur.banner_title.value) || '', { maxText: 100, dbMax: 500, placeholder: 'Título del banner', style: 'font-size:26px;font-weight:500;letter-spacing:-.02em;line-height:1.2' });
+    inputs.banner_text = richEditor((cur.banner_text && cur.banner_text.value) || '', { maxText: 300, dbMax: 500, tall: true, placeholder: 'Texto del banner', style: 'font-size:14px;font-weight:300;line-height:1.6' });
     var save = h('button', { class: 'b pri', type: 'button' }, 'Guardar textos');
     // Barra de pesos: aplica Ligero / Normal / Negrita al texto seleccionado (guarda marcas [l] [b]).
     async function setHeight(px) {
@@ -316,6 +373,7 @@
       try {
         for (var i = 0; i < BANNER_KEYS.length; i++) {
           var k = BANNER_KEYS[i], v = inputs[k].value.trim(), row = cur[k];
+          if (inputs[k].tooLong()) throw new Error('Hay demasiado formato en uno de los textos. Quita algunos cambios de peso o color.');
           if (row && row.value === v) continue;
           var q = row
             ? sb.from('site_settings').update({ value: v }).eq('key', k).eq('updated_at', row.updated_at).select('key,value,updated_at')
@@ -483,8 +541,8 @@
     }
     function form(n) {
       var isNew = !n, d = n || { title: '', body: '', category: 'General', image_path: null, status: 'draft', published_on: new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }) };
-      var title = h('input', { type: 'text', maxlength: 140, value: d.title });
-      var body = h('textarea', { maxlength: 1200 }); body.value = d.body;
+      var title = richEditor(d.title, { maxText: 100, dbMax: 140, placeholder: 'Título de la noticia', style: 'font-size:15px;font-weight:500;line-height:1.35' });
+      var body = richEditor(d.body, { maxText: 400, dbMax: 2000, tall: true, placeholder: 'Texto de la noticia', style: 'font-size:13px;line-height:1.5' });
       var cat = h('input', { type: 'text', maxlength: 40, list: 'cats', value: d.category });
       var dl = h('datalist', { id: 'cats' }); ['Anuncios', 'Novedades', 'Eventos', 'General'].forEach(function (c) { dl.append(h('option', { value: c })); });
       var date = h('input', { type: 'date', value: d.published_on });
@@ -516,6 +574,7 @@
       save.onclick = async function () {
         var rec = { title: title.value.trim(), body: body.value.trim(), category: cat.value.trim() || 'General', published_on: date.value, status: st.value, image_path: imgPath || null };
         if (!PX.stripRich(rec.title)) return setMsg(out2, 'err', 'Escribe el título.');
+        if (title.tooLong() || body.tooLong()) return setMsg(out2, 'err', 'Hay demasiado formato en el título o el texto. Quita algunos cambios de peso o color.');
         if (!rec.published_on) return setMsg(out2, 'err', 'Elige la fecha.');
         busy(save, true); var r;
         if (isNew) r = await sb.from('news').insert(rec).select('id');
@@ -770,7 +829,7 @@
       var r = await sb.functions.invoke('invite_admin', { body: { email: v } });
       busy(inv, false);
       if (r.error) { var m = 'No se pudo enviar la invitación.'; try { var j = await r.error.context.json(); if (j && j.error) m = j.error; } catch (e) {} return setMsg(out, 'err', m); }
-      email.value = ''; setMsg(out, 'ok', 'Invitación enviada a ' + v + '. Debe abrir el enlace, crear su contraseña y activar la verificación en dos pasos.'); load();
+      email.value = ''; setMsg(out, 'ok', 'Invitación enviada a ' + v + '. Debe abrir el enlace y crear su contraseña.'); load();
     };
     root.append(h('div', { class: 'box' }, h('h2', null, 'Invitar a alguien'), field('Correo', email), h('div', { class: 'actions' }, inv)), list, out);
     async function load() {

@@ -48,10 +48,10 @@ select is((select count(*)::int from public.admins), 0, 'no-admin: no ve la tabl
 select is((select count(*)::int from public.news where status = 'draft'), 0, 'no-admin: no ve borradores');
 select throws_ok($$ insert into storage.objects (bucket_id, name) values ('media', 'x.png') $$, '42501', null, 'no-admin: no sube a storage');
 
--- ===================== ADMIN SIN MFA (aal1) =====================
+-- ===================== ADMIN SIN MFA (aal1): desde la migración 5 la verificación en dos pasos ya no se exige =====================
 select set_config('request.jwt.claims', '{"sub":"aaaaaaaa-0000-4000-8000-000000000001","role":"authenticated","aal":"aal1"}', true);
-select is((select count(*)::int from public.news where status = 'draft'), 0, 'admin aal1: no ve borradores (exige MFA)');
-select throws_ok($$ insert into public.tools (category_id, name, url) values ('00000000-0000-4000-8000-000000000001','x','https://x.co') $$, '42501', null, 'admin aal1: no escribe');
+select is((select count(*)::int from public.news where status = 'draft'), 1, 'admin aal1: ve borradores (MFA ya no se exige)');
+select lives_ok($$ update public.site_settings set value = value where key = 'banner_title' $$, 'admin aal1: puede escribir (MFA ya no se exige)');
 select is((select count(*)::int from public.admins), 1, 'admin aal1: sí ve su propia fila en admins');
 
 -- ===================== ADMIN CON MFA (aal2) =====================
