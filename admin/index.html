@@ -43,6 +43,14 @@
   .sw-theme[aria-checked=false] .knob { transform:translateX(24px); }
   .sw-theme .knob svg { width:13px; height:13px; grid-area:1/1; } .sw-theme .sun { display:none; } .dark .sw-theme .moon { display:block; } .dark .sw-theme .sun { display:none; } .sw-theme .moon { display:none; } .sw-theme[aria-checked=true] .sun { display:block; }
   .sw-theme:focus-visible { outline:2px solid var(--fg); outline-offset:2px; }
+  .dot { margin-left:auto; min-width:18px; height:18px; padding:0 5px; border-radius:999px; background:#d4352a; color:#fff; font-size:11px; font-weight:600; line-height:18px; text-align:center; }
+  .dot.hidden { display:none; }
+  .nv { padding:12px 0; border-top:1px solid var(--border); } .nv:first-of-type { border-top:0; }
+  .nv-h { display:flex; align-items:center; gap:8px; flex-wrap:wrap; } .nv-h .sub { margin-left:auto; font-size:12px; color:var(--subtle); }
+  .nv-new { background:#d4352a; color:#fff; font-size:10px; font-weight:600; padding:2px 7px; border-radius:999px; text-transform:uppercase; letter-spacing:.04em; }
+  .nv-l { margin:8px 0 0; padding-left:18px; color:var(--muted); line-height:1.55; }
+  details.man { border-top:1px solid var(--border); padding:10px 0; } details.man:first-of-type { border-top:0; }
+  details.man summary { cursor:pointer; font-weight:500; padding:2px 0; } details.man p { margin:8px 0 0; color:var(--muted); line-height:1.6; }
   .shell { display:grid; grid-template-columns:210px 1fr; min-height:100vh; }
   aside { position:sticky; top:0; height:100vh; height:100dvh; overflow-y:auto; border-right:1px solid var(--border); padding:20px 14px; display:flex; flex-direction:column; gap:4px; background:var(--surface); }
   aside .logo { margin:0 6px 20px; }
@@ -80,9 +88,10 @@
 <body>
 <div id="app"></div>
 <script src="../assets/config.js"></script>
-<script src="../assets/common.js?v=4"></script>
+<script src="../assets/common.js?v=5"></script>
 <script src="../assets/supabase-js-2.117.3.min.js"></script>
-<script src="admin.js?v=7"></script>
+<script src="ayuda.js?v=1"></script>
+<script src="admin.js?v=8"></script>
 <script>var st = document.createElement('style'); st.textContent = PX.richCss(); document.head.appendChild(st);</script>
 </body>
 </html>

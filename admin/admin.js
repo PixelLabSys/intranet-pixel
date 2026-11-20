@@ -95,17 +95,26 @@
 
   /* ---------------- shell ---------------- */
   var current = 'banner';
+  /* Novedades: el círculo rojo cuenta las entradas de Ayuda más nuevas que la última que esta persona vio (se recuerda por navegador). */
+  function ayudaKey() { return 'px_ayuda_visto_' + (me0 && me0.id); }
+  var me0 = null, refreshBadge = function () {};
+  function ayudaSeen() { try { return localStorage.getItem(ayudaKey()) || ''; } catch (e) { return ''; } }
+  function ayudaUnread() { var seen = ayudaSeen(), N = (window.PX_AYUDA && PX_AYUDA.novedades) || []; return N.filter(function (n) { return n.id > seen; }); }
   function viewShell(user) {
+    me0 = user;
     armIdle();
-    var main = h('main'), tabs = [
+    var badge = null, main = h('main'), tabs = [
       ['banner', 'Banner', 'image'], ['menus', 'Menús', 'menu'], ['noticias', 'Noticias', 'megaphone'],
-      ['calendario', 'Calendario', 'calendar'], ['herramientas', 'Herramientas', 'gear'], ['accesos', 'Accesos', 'users'], ['admins', 'Administradores', 'shield']
+      ['calendario', 'Calendario', 'calendar'], ['herramientas', 'Herramientas', 'gear'], ['accesos', 'Accesos', 'users'], ['admins', 'Administradores', 'shield'], ['ayuda', 'Ayuda', 'help']
     ], btns = {};
     var aside = h('aside', null, logos());
     tabs.forEach(function (t) {
       var b = h('button', { class: 'tab', type: 'button' }, PX.svgIcon(t[2], 16), t[1]); btns[t[0]] = b;
       b.onclick = function () { go(t[0]); }; aside.append(b);
+      if (t[0] === 'ayuda') { badge = h('span', { class: 'dot hidden', 'aria-label': 'Novedades sin leer' }); b.append(badge); }
     });
+    refreshBadge = function () { var n = ayudaUnread().length; if (badge) { badge.textContent = n > 9 ? '9+' : String(n); badge.classList.toggle('hidden', n === 0); } };
+    refreshBadge();
     var out = h('button', { class: 'b', type: 'button' }, 'Cerrar sesión'); out.onclick = logout;
     var theme = h('button', { class: 'sw-theme', type: 'button', role: 'switch', 'aria-label': 'Cambiar tema' });
     var knob = h('span', { class: 'knob' }, PX.svgIcon('sun'), PX.svgIcon('moon'));
@@ -122,7 +131,7 @@
     function go(k) {
       current = k; Object.keys(btns).forEach(function (x) { btns[x].classList.toggle('on', x === k); });
       main.textContent = '';
-      var mods = { banner: modBanner, menus: modMenus, noticias: modNews, calendario: modCalendar, herramientas: modTools, accesos: modAccess, admins: modAdmins };
+      var mods = { banner: modBanner, menus: modMenus, noticias: modNews, calendario: modCalendar, herramientas: modTools, accesos: modAccess, admins: modAdmins, ayuda: modAyuda };
       mods[k] ? mods[k](main, user) : modSoon(main, k);
     }
     show(h('div', { class: 'shell' }, aside, main));
@@ -873,6 +882,28 @@
       block('Correos individuales', 'access_emails', 'email', 'persona@gmail.com', 'Para personas con correo externo (por ejemplo un Gmail) que sí deben entrar.',
         function (v) { return v.trim().toLowerCase(); }, function (v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) && v.length <= 254; }),
       out);
+  }
+
+  /* ---------------- Ayuda: novedades y manual ---------------- */
+  function modAyuda(root) {
+    var N = (window.PX_AYUDA && PX_AYUDA.novedades) || [], M = (window.PX_AYUDA && PX_AYUDA.manual) || [], seen = ayudaSeen();
+    root.append(h('p', { class: 'eyebrow' }, 'Soporte'), h('h1', null, 'Ayuda'));
+    var box1 = h('div', { class: 'box' }, h('h2', null, 'Novedades de la plataforma'));
+    N.forEach(function (n) {
+      var d = n.fecha.split('-'), fecha = d[2] + '/' + d[1] + '/' + d[0];
+      var head = h('div', { class: 'nv-h' }, h('strong', null, n.titulo), n.id > seen ? h('span', { class: 'nv-new' }, 'Nuevo') : null, h('span', { class: 'sub' }, fecha));
+      var ul = h('ul', { class: 'nv-l' }); n.items.forEach(function (t) { ul.append(h('li', null, t)); });
+      box1.append(h('div', { class: 'nv' }, head, ul));
+    });
+    var box2 = h('div', { class: 'box' }, h('h2', null, 'Manual de uso'));
+    M.forEach(function (s, i) {
+      var det = h('details', { class: 'man' }); if (i === 0) det.open = true;
+      det.append(h('summary', null, s.t)); s.p.forEach(function (t) { det.append(h('p', null, t)); });
+      box2.append(det);
+    });
+    root.append(box1, box2);
+    if (N.length) { try { localStorage.setItem(ayudaKey(), N[0].id); } catch (e) {} }
+    refreshBadge();
   }
 
   /* ---------------- Administradores ---------------- */
