@@ -107,9 +107,18 @@
       b.onclick = function () { go(t[0]); }; aside.append(b);
     });
     var out = h('button', { class: 'b', type: 'button' }, 'Cerrar sesión'); out.onclick = logout;
-    var theme = h('button', { class: 'b', type: 'button' }, 'Cambiar tema');
-    theme.onclick = function () { var d = document.documentElement.classList.toggle('dark'); try { localStorage.setItem('theme', d ? 'dark' : 'light'); } catch (e) {} };
-    aside.append(h('div', { class: 'foot' }, h('span', null, user.email), theme, out));
+    var theme = h('button', { class: 'sw-theme', type: 'button', role: 'switch', 'aria-label': 'Cambiar tema' });
+    var knob = h('span', { class: 'knob' }, PX.svgIcon('sun'), PX.svgIcon('moon'));
+    knob.firstChild.setAttribute('class', 'sun'); knob.lastChild.setAttribute('class', 'moon');
+    theme.append(knob);
+    function syncTheme() { theme.setAttribute('aria-checked', document.documentElement.classList.contains('dark') ? 'false' : 'true'); }
+    theme.onclick = function () { var d = document.documentElement.classList.toggle('dark'); try { localStorage.setItem('theme', d ? 'dark' : 'light'); } catch (e) {} syncTheme(); };
+    syncTheme();
+    var meta = user.user_metadata || {}, pic = meta.avatar_url || meta.picture, nm = meta.full_name || meta.name || '';
+    var av = pic && /^https:\/\//.test(pic)
+      ? h('img', { class: 'avatar', src: pic, alt: '', referrerpolicy: 'no-referrer' })
+      : h('span', { class: 'avatar ini' }, (nm || user.email || '?').charAt(0).toUpperCase());
+    aside.append(h('div', { class: 'foot' }, av, nm ? h('span', { class: 'nm' }, nm) : null, h('span', null, user.email), theme, out));
     function go(k) {
       current = k; Object.keys(btns).forEach(function (x) { btns[x].classList.toggle('on', x === k); });
       main.textContent = '';

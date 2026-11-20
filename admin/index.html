@@ -35,6 +35,14 @@
   .qr { display:block; margin:12px auto; width:180px; height:180px; background:#fff; padding:6px; border-radius:8px; }
   code { font-size:12px; word-break:break-all; background:var(--surface); padding:2px 5px; border-radius:4px; }
 
+  .avatar { width:36px; height:36px; border-radius:50%; object-fit:cover; display:block; }
+  .avatar.ini { display:grid; place-items:center; background:var(--fg); color:var(--bg); font-weight:500; }
+  aside .foot .nm { color:var(--fg); font-weight:500; }
+  .sw-theme { position:relative; width:52px; height:28px; padding:0; border:1px solid var(--border); border-radius:999px; background:var(--hover); cursor:pointer; flex:none; }
+  .sw-theme .knob { position:absolute; top:2px; left:2px; width:22px; height:22px; border-radius:50%; background:var(--fg); color:var(--bg); display:grid; place-items:center; transition:transform .2s; }
+  .sw-theme[aria-checked=false] .knob { transform:translateX(24px); }
+  .sw-theme .knob svg { width:13px; height:13px; grid-area:1/1; } .sw-theme .sun { display:none; } .dark .sw-theme .moon { display:block; } .dark .sw-theme .sun { display:none; } .sw-theme .moon { display:none; } .sw-theme[aria-checked=true] .sun { display:block; }
+  .sw-theme:focus-visible { outline:2px solid var(--fg); outline-offset:2px; }
   .shell { display:grid; grid-template-columns:210px 1fr; min-height:100vh; }
   aside { border-right:1px solid var(--border); padding:20px 14px; display:flex; flex-direction:column; gap:4px; background:var(--surface); }
   aside .logo { margin:0 6px 20px; }
@@ -74,7 +82,7 @@
 <script src="../assets/config.js"></script>
 <script src="../assets/common.js?v=4"></script>
 <script src="../assets/supabase-js-2.117.3.min.js"></script>
-<script src="admin.js?v=4"></script>
+<script src="admin.js?v=5"></script>
 <script>var st = document.createElement('style'); st.textContent = PX.richCss(); document.head.appendChild(st);</script>
 </body>
 </html>
