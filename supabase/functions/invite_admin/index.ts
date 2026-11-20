@@ -1,5 +1,5 @@
-// Invita a un nuevo administrador. Corre en el servidor de Supabase: SUPABASE_SERVICE_ROLE_KEY nunca llega al navegador.
-// Solo puede invocarla un administrador con sesión MFA (public.can_write()).
+// Agrega un nuevo administrador solo con su correo (sin enviar invitación). Corre en el servidor de Supabase: SUPABASE_SERVICE_ROLE_KEY nunca llega al navegador.
+// Solo puede invocarla un administrador (public.can_write()).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.117.3";
 
 const cors = {
@@ -16,8 +16,6 @@ Deno.serve(async (req) => {
   const url = Deno.env.get("SUPABASE_URL")!;
   const anon = Deno.env.get("SUPABASE_ANON_KEY")!;
   const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const redirectTo = Deno.env.get("ADMIN_URL"); // fijo en el servidor: no se acepta del cliente
-  if (!redirectTo) return json({ error: "Falta configurar ADMIN_URL en el servidor" }, 500);
 
   const authHeader = req.headers.get("Authorization") ?? "";
   const caller = createClient(url, anon, { global: { headers: { Authorization: authHeader } } });
@@ -31,13 +29,23 @@ Deno.serve(async (req) => {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) return json({ error: "Correo inválido" }, 400);
 
   const admin = createClient(url, service, { auth: { persistSession: false } });
-  const { data: invited, error: invErr } = await admin.auth.admin.inviteUserByEmail(email, { redirectTo });
-  if (invErr || !invited?.user) {
-    return json({ error: invErr?.message?.includes("registered")
-      ? "Ese correo ya tiene una cuenta. Pídele a Alejo que la agregue como administradora desde Supabase."
-      : "No se pudo enviar la invitación" }, 400);
+
+  // Se crea (o se reutiliza) el usuario ya confirmado y SIN contraseña: no se envía ningún correo.
+  // La persona entra con "Continuar con Google" usando ese mismo correo; el registro público sigue cerrado.
+  let userId: string | null = null;
+  const { data: created, error: createErr } = await admin.auth.admin.createUser({ email, email_confirm: true });
+  if (created?.user) userId = created.user.id;
+  else if (createErr && /regist|exist|already/i.test(createErr.message ?? "")) {
+    for (let page = 1; page <= 20 && !userId; page++) {
+      const { data: list } = await admin.auth.admin.listUsers({ page, perPage: 200 });
+      const hit = list?.users?.find((u) => (u.email ?? "").toLowerCase() === email);
+      if (hit) userId = hit.id;
+      if (!list || list.users.length < 200) break;
+    }
   }
-  const { error: insErr } = await admin.from("admins").insert({ user_id: invited.user.id, email, added_by: who?.user?.id ?? null });
-  if (insErr) return json({ error: "Invitación enviada pero no se pudo registrar al administrador" }, 500);
+  if (!userId) return json({ error: "No se pudo agregar a esa persona" }, 400);
+
+  const { error: insErr } = await admin.from("admins").upsert({ user_id: userId, email, added_by: who?.user?.id ?? null }, { onConflict: "user_id" });
+  if (insErr) return json({ error: "No se pudo registrar al administrador" }, 500);
   return json({ ok: true, email });
 });

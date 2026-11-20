@@ -13,3 +13,15 @@
 - Local: `supabase start`; pruebas `supabase test db`; correos de invitación en http://127.0.0.1:56324.
 - En local `[auth.email] enable_signup=true` habilita el proveedor de correo; el registro público sigue cerrado por `[auth] enable_signup=false`.
 - Pendiente: export semanal del respaldo, ping anti-pausa (plan gratuito), plan de rescate de administradores.
+
+## Agregar administradores y entrar con Google (2026-11-20)
+
+Agregar un administrador es escribir su correo en Administradores > Agregar. La función `invite_admin` crea el usuario ya confirmado y sin contraseña y lo registra en `admins`; no se envía ningún correo. La persona entra con "Continuar con Google" usando ese mismo correo (cuenta Gmail o Google Workspace de la empresa). El registro público sigue cerrado.
+
+Activar Google (una sola vez):
+1. Google Cloud Console > APIs y servicios > Credenciales > Crear ID de cliente OAuth (aplicación web). URI de redirección autorizado: `https://zifpfkivgdqdzlyulzwf.supabase.co/auth/v1/callback`.
+2. Supabase > Authentication > Sign In / Providers > Google: activar y pegar Client ID y Client Secret (el secreto solo va en el panel de Supabase).
+3. Supabase > Authentication > URL Configuration: la URL del backoffice (`https://pixellabsys.github.io/intranet-pixel/admin/`) en Redirect URLs.
+4. Redesplegar la función: `supabase functions deploy invite_admin`.
+
+Límite: quien entra por Google solo pasa si su correo está en `admins`; cualquier otra cuenta ve "Sin acceso".

@@ -43,7 +43,14 @@
       await sb.auth.resetPasswordForEmail(email.value.trim(), { redirectTo: location.origin + location.pathname });
       setMsg(out, 'ok', 'Si el correo es de un administrador, recibirás un enlace para crear una contraseña nueva.'); // misma respuesta exista o no
     };
-    var f = h('form', null, h('h1', null, 'Backoffice'), field('Correo', email), field('Contraseña', pw), btn, out, forgot);
+    var g = h('button', { class: 'b full', type: 'button' }, 'Continuar con Google');
+    g.onclick = async function () {
+      var r = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname } });
+      if (r.error) setMsg(out, 'err', 'Google aún no está activado. Usa tu correo y contraseña.');
+    };
+    var oauthErr = /error_description|error=/.test(location.hash + location.search);
+    if (oauthErr) { history.replaceState(null, '', location.pathname); setMsg(out, 'err', 'Esa cuenta no está autorizada. Pide a un administrador que te agregue.'); }
+    var f = h('form', null, h('h1', null, 'Backoffice'), g, h('p', { class: 'eyebrow', style: 'margin:16px 0 0;text-align:center' }, 'o con correo y contraseña'), field('Correo', email), field('Contraseña', pw), btn, out, forgot);
     f.onsubmit = async function (e) {
       e.preventDefault(); busy(btn, true);
       var r = await sb.auth.signInWithPassword({ email: email.value.trim(), password: pw.value });
@@ -822,16 +829,16 @@
   async function modAdmins(root, me) {
     root.append(h('p', { class: 'eyebrow' }, 'Acceso'), h('h1', null, 'Administradores'));
     var list = h('div', { class: 'box' }), out = h('div');
-    var email = h('input', { type: 'email', placeholder: 'correo@pixelgraphic.co' }), inv = h('button', { class: 'b pri', type: 'button' }, 'Enviar invitación');
+    var email = h('input', { type: 'email', placeholder: 'correo@pixel-g.com' }), inv = h('button', { class: 'b pri', type: 'button' }, 'Agregar');
     inv.onclick = async function () {
       var v = email.value.trim(); if (!v) return;
       busy(inv, true);
       var r = await sb.functions.invoke('invite_admin', { body: { email: v } });
       busy(inv, false);
-      if (r.error) { var m = 'No se pudo enviar la invitación.'; try { var j = await r.error.context.json(); if (j && j.error) m = j.error; } catch (e) {} return setMsg(out, 'err', m); }
-      email.value = ''; setMsg(out, 'ok', 'Invitación enviada a ' + v + '. Debe abrir el enlace y crear su contraseña.'); load();
+      if (r.error) { var m = 'No se pudo agregar a esa persona.'; try { var j = await r.error.context.json(); if (j && j.error) m = j.error; } catch (e) {} return setMsg(out, 'err', m); }
+      email.value = ''; setMsg(out, 'ok', 'Listo. ' + v + ' ya puede entrar con Google desde esta misma página (' + location.origin + location.pathname + ').'); load();
     };
-    root.append(h('div', { class: 'box' }, h('h2', null, 'Invitar a alguien'), field('Correo', email), h('div', { class: 'actions' }, inv)), list, out);
+    root.append(h('div', { class: 'box' }, h('h2', null, 'Agregar administrador'), h('p', { class: 'sub' }, 'Escribe su correo de Google o de la empresa. No recibe ningún mensaje: solo entra con "Continuar con Google".'), field('Correo', email), h('div', { class: 'actions' }, inv)), list, out);
     async function load() {
       var r = await sb.from('admins').select('user_id,email,created_at').order('created_at');
       list.textContent = ''; list.append(h('h2', null, 'Administradores actuales'));
