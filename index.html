@@ -43,6 +43,14 @@
   #gate button.sec { background: transparent; color: var(--fg); border-color: var(--border); margin-top: 10px; }
   #gate button:hover { opacity: .88; } #gate button:disabled { opacity: .5; cursor: default; }
   #gate .gmsg { margin-top: 14px; font-size: 13px; color: #b3382c; } .dark #gate .gmsg { color: #e06a5c; }
+  .who { display: flex; align-items: center; gap: 9px; margin-right: 4px; min-width: 0; }
+  .who .av { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; flex: none; display: grid; place-items: center;
+    background: var(--fg); color: var(--bg); font-size: 13px; font-weight: 500; }
+  .who .tx { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; text-align: right; }
+  .who .nm { font-size: 12px; font-weight: 500; color: var(--fg); white-space: nowrap; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+  .who .em { font-size: 11px; color: var(--muted); white-space: nowrap; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+  .hero.foto .who .nm { color: #fff; } .hero.foto .who .em { color: rgba(255,255,255,.75); }
+  @media (max-width: 760px) { .who .tx { display: none; } }
   .logout { width: auto; padding: 0 12px; font: inherit; font-size: 12px; }
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
@@ -216,6 +224,7 @@
         <img class="logo logo-oscuro" src="logo-oscuro.png" alt="Pixel Graphic">
         <ul class="links" id="topnav"></ul>
         <div class="right">
+          <div class="who hidden" id="who"></div>
           <button class="iconbtn theme" id="theme" aria-label="Cambiar tema"></button>
           <button class="iconbtn logout hidden" id="logout" type="button">Salir</button>
           <button class="iconbtn menu-btn" id="menubtn" aria-label="Abrir menú" aria-expanded="false"></button>
@@ -484,9 +493,21 @@
     qi.oninput = filtra;
   }
 
+  var me = null;
+  function renderWho() {
+    if (!me) return;
+    var m = me.user_metadata || {}, pic = m.avatar_url || m.picture, nm = m.full_name || m.name || '', em = me.email || '', box = $('who');
+    var av = pic && /^https:\/\//.test(pic)
+      ? h('img', { class: 'av', src: pic, alt: '', referrerpolicy: 'no-referrer' })
+      : h('span', { class: 'av', 'aria-hidden': 'true' }, (nm || em || '?').charAt(0).toUpperCase());
+    box.textContent = ''; box.title = nm ? nm + ' · ' + em : em;
+    box.append(h('div', { class: 'tx' }, nm ? h('span', { class: 'nm' }, nm) : null, h('span', { class: nm ? 'em' : 'nm' }, em)), av);
+    box.classList.remove('hidden');
+  }
+
   function renderAll(c) {
     events = c.events || []; renderBanner(c); renderMenus(c); renderNews(c); renderCal(); renderTools(c);
-    document.body.classList.remove('gated'); $('logout').classList.remove('hidden'); $('logout').onclick = signOut;
+    document.body.classList.remove('gated'); $('logout').classList.remove('hidden'); $('logout').onclick = signOut; renderWho();
   }
 
   async function init() {
@@ -498,7 +519,7 @@
     if (!ses) return loginGate('');
     var mem = await sb.rpc('is_member');
     if (mem.error || mem.data !== true) return gate('Sin acceso', 'La cuenta ' + (ses.user.email || '') + ' no está autorizada para ver la intranet.', [{ label: 'Entrar con otra cuenta', fn: signOut }]);
-    gate('Intranet Pixel', 'Cargando…', []);
+    me = ses.user; gate('Intranet Pixel', 'Cargando…', []);
     var cap = new Promise(function (_, rej) { setTimeout(function () { rej(new Error('tiempo agotado')); }, 8000); });
     try { renderAll(await Promise.race([loadLive(), cap])); }
     catch (e) { if (window.console) console.warn('Intranet:', e && e.message ? e.message : e); gate('No pudimos cargar', 'Revisa tu conexión e intenta de nuevo.', [{ label: 'Reintentar', fn: function () { location.reload(); } }, { label: 'Salir', sec: true, fn: signOut }]); }
